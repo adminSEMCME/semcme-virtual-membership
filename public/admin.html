@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>SEMCME Membership Admin</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/admin.css" />
+  </head>
+  <body class="admin-body">
+    <div class="utility-bar">
+      <div>
+        <span>Excellence and Innovation in Medical Education</span
+        ><a href="https://semcme.org/contact-us/">Contact Us</a>
+      </div>
+    </div>
+    <header class="site-header">
+      <a class="brand" href="https://semcme.org/"
+        ><img
+          src="/semcme-logo.png"
+          alt="Southeast Michigan Center for Medical Education" /></a
+      ><a class="admin-view-link" href="/">View member site</a>
+    </header>
+    <div class="library-bar">
+      <a href="/admin.html">Virtual Membership Administration</a
+      ><span>Staff tools</span>
+    </div>
+    <main class="admin-main">
+      <section id="adminLogin" class="admin-login">
+        <span class="mini-kicker">Staff access</span>
+        <h1>Membership administration</h1>
+        <p>
+          Sync member access and review incoming support questions.
+        </p>
+        <form id="adminLoginForm">
+          <label
+            >Admin password<input
+              name="password"
+              type="password"
+              required /></label
+          ><button class="primary-button">Sign in <span>→</span></button>
+          <p class="form-status"></p>
+        </form>
+      </section>
+      <section id="dashboard" class="hidden">
+        <div class="admin-title">
+          <div>
+            <span class="mini-kicker">Staff dashboard</span>
+            <h1>Virtual Membership</h1>
+          </div>
+          <button id="refresh" class="outline-button">Refresh data</button>
+        </div>
+        <div id="stats" class="stats"></div>
+        <div class="admin-grid">
+          <section class="admin-panel sync-panel full">
+            <div class="panel-title">
+              <div>
+                <h2>SEMCME.org virtual programs</h2>
+                <p>
+                  Refresh the hero carousel from SEMCME.org slides containing
+                  “virtual” or “virtually.”
+                </p>
+              </div>
+              <button id="syncEvents" class="outline-button" type="button">
+                Refresh programs
+              </button>
+            </div>
+            <div id="heroEventRows" class="sync-list"></div>
+            <p class="form-status"></p>
+          </section>
+          <section class="admin-panel sync-panel">
+            <div class="panel-title">
+              <div>
+                <h2>Virtual Membership members</h2>
+                <p>
+                  Sync contacts from the SEMCME Virtual Members contact list
+                  into the local member database.
+                </p>
+              </div>
+              <button id="syncMembers" class="outline-button" type="button">
+                Sync members
+              </button>
+            </div>
+            <p id="ccStatus" class="sync-note"></p>
+          </section>
+          <section class="admin-panel table-panel full">
+            <h2>Members</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Member</th>
+                    <th>Institution</th>
+                    <th>Source</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="memberRows"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="admin-panel table-panel full">
+            <h2>Support requests</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>From</th>
+                    <th>Topic</th>
+                    <th>Message</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="supportRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/admin.js"></script>
+  </body>
+</html>

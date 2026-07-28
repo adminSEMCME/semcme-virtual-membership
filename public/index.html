@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="SEMCME Virtual Membership — educational programs and resources for Southeast Michigan's medical education community."
+    />
+    <title>SEMCME Virtual Membership</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="SEMCME Virtual Membership home"
+        ><img
+          src="/semcme-logo.png"
+          alt="Southeast Michigan Center for Medical Education"
+      /></a>
+      <div class="portal-title">
+        <span>semcme</span>
+        <strong>Virtual Membership</strong>
+      </div>
+      <nav class="header-actions" aria-label="Account">
+        <button id="supportTop" class="text-button hidden">
+          Member support</button
+        ><button id="logout" class="text-button hidden">Sign out</button>
+      </nav>
+    </header>
+    <main id="main">
+      <section id="welcome" class="welcome-shell">
+        <div class="welcome-copy">
+          <span class="kicker"
+            >Southeast Michigan Center for Medical Education</span
+          >
+          <h1>Your learning community,<br /><em>all in one place.</em></h1>
+          <p>
+            Find SEMCME programs, recordings, materials, and upcoming member
+            opportunities.
+          </p>
+          <div class="trust-row">
+            <span>10 program areas</span><span>On-demand learning</span
+            ><span>Member-only access</span>
+          </div>
+        </div>
+        <div class="auth-card">
+          <form id="loginForm" class="auth-form">
+            <div>
+              <span class="mini-kicker">Welcome back</span>
+              <h2>Sign in with email</h2>
+              <p>
+                Enter the email used for your SEMCME Virtual Membership. We’ll
+                send a secure sign-in link.
+              </p>
+            </div>
+            <label
+              >Email address<input
+                name="email"
+                type="email"
+                required
+                autocomplete="email"
+            /></label>
+            <button class="primary-button" type="submit">
+              Send sign-in link <span>→</span>
+            </button>
+            <button id="demoLogin" class="outline-button" type="button">
+              View member dashboard
+            </button>
+            <button class="help-link" type="button" data-open-support>
+              Need help accessing your account?
+            </button>
+            <p class="form-status" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
+
+      <section id="library" class="library hidden">
+        <section id="featureBanner" class="feature-banner"></section>
+        <div class="library-layout">
+          <aside class="program-sidebar">
+            <div class="sidebar-heading">
+              <span class="mini-kicker">Explore the membership</span>
+              <h2>Programs</h2>
+            </div>
+            <nav id="programNav" aria-label="Educational programs"></nav>
+          </aside>
+          <div class="program-main">
+            <div class="mobile-program-select">
+              <label for="programSelect">Program area</label
+              ><select id="programSelect"></select>
+            </div>
+            <section id="programView" aria-live="polite"></section>
+          </div>
+        </div>
+        <section class="support-strip">
+          <div>
+            <span class="mini-kicker">Member support</span>
+            <h2>Can’t find what you need?</h2>
+            <p>
+              Send a question, suggest a resource, or ask for help with your
+              member access.
+            </p>
+          </div>
+          <button class="light-button" data-open-support>
+            Contact SEMCME <span>→</span>
+          </button>
+        </section>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-brand">SEMCME <span>Virtual Membership</span></div>
+      <p>Advancing graduate medical education across Southeast Michigan.</p>
+      <div>
+        <button type="button" data-open-support>Member support</button
+        ><a href="mailto:info@semcme.org">info@semcme.org</a
+        ><a href="tel:18662736263">866-2SEMCME</a>
+      </div>
+    </footer>
+
+    <dialog id="supportDialog">
+      <form method="dialog" class="dialog-head">
+        <div>
+          <span class="mini-kicker">We’re here to help</span>
+          <h2>Contact member support</h2>
+        </div>
+        <button aria-label="Close support form">×</button>
+      </form>
+      <form id="supportForm" class="support-form">
+        <label
+          >Your name<input name="name" required autocomplete="name" /></label
+        ><label
+          >Email address<input
+            name="email"
+            type="email"
+            required
+            autocomplete="email" /></label
+        ><label
+          >What can we help with?<select name="topic" required>
+            <option value="">Choose a topic</option>
+            <option>Member access</option>
+            <option>Program or recording</option>
+            <option>Suggest a resource</option>
+            <option>Technical issue</option>
+            <option>Other</option>
+          </select></label
+        ><label
+          >Message<textarea
+            name="message"
+            rows="5"
+            required
+            minlength="10"
+          ></textarea></label
+        ><button class="primary-button" type="submit">
+          Send question <span>→</span>
+        </button>
+        <p class="form-status" aria-live="polite"></p>
+      </form>
+    </dialog>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
