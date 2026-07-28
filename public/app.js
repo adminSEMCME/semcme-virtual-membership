@@ -61,19 +61,6 @@ $("#loginForm").addEventListener("submit", async (e) => {
     button.disabled = false;
   }
 });
-$("#demoLogin").addEventListener("click", async (e) => {
-  const form = $("#loginForm");
-  e.currentTarget.disabled = true;
-  status(form, "Opening the demo dashboard…");
-  try {
-    await api("/api/auth/demo", { method: "POST" });
-    await loadLibrary();
-  } catch (x) {
-    status(form, esc(x.message));
-  } finally {
-    e.currentTarget.disabled = false;
-  }
-});
 $("#logout").addEventListener("click", async () => {
   await api("/api/logout", { method: "POST" });
   location.reload();

@@ -298,15 +298,6 @@ function createMagicLink(memberRow) {
   return `${baseUrl}/?token=${encodeURIComponent(token)}`;
 }
 
-function demoMember() {
-  db.prepare(`
-    INSERT INTO members (email, first_name, last_name, institution, cc_status, updated_at)
-    VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-    ON CONFLICT(email) DO UPDATE SET updated_at=CURRENT_TIMESTAMP
-  `).run('demo@semcme.local', 'Demo', 'Member', 'SEMCME', 'local_demo');
-  return db.prepare('SELECT * FROM members WHERE email=?').get('demo@semcme.local');
-}
-
 async function requestMagicLink(email) {
   const checked = await findConstantContactListMember(email);
   if (!checked.configured) throw Object.assign(new Error('Constant Contact list lookup is not configured for Virtual Membership yet.'), { status:503 });
@@ -406,11 +397,6 @@ async function api(req, res, path) {
     const b=await readBody(req); const token=clean(b.token,500);
     const row = token ? verifyMagicToken(token) : null;
     if (!row) return json(res,401,{error:'That sign-in link is invalid or expired.'});
-    return json(res,200,{ok:true,email:row.email},{'Set-Cookie':cookie('semcme_member',sign(`member:${row.id}`))});
-  }
-  if (path === '/api/auth/demo' && req.method === 'POST') {
-    if (isProd) return json(res,404,{error:'Not found'});
-    const row = demoMember();
     return json(res,200,{ok:true,email:row.email},{'Set-Cookie':cookie('semcme_member',sign(`member:${row.id}`))});
   }
   if (path === '/api/logout' && req.method === 'POST') return json(res,200,{ok:true},{'Set-Cookie':clearCookie('semcme_member')});
