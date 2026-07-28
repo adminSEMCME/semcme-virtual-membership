@@ -39,15 +39,105 @@ const semcmeHomeUrl = process.env.SEMCME_HOME_URL || 'https://semcme.org/';
 const oneDayMs = 24 * 60 * 60 * 1000;
 const semcmeHeroRefreshMs = Math.max(Number(process.env.SEMCME_HERO_REFRESH_MS || oneDayMs), oneDayMs);
 const ccAccessToken = process.env.CONSTANT_CONTACT_ACCESS_TOKEN || '';
+const ccClientId = process.env.CONSTANT_CONTACT_CLIENT_ID || '';
+const ccClientSecret = process.env.CONSTANT_CONTACT_CLIENT_SECRET || '';
+const ccRefreshToken = process.env.CONSTANT_CONTACT_REFRESH_TOKEN || '';
 const ccVirtualMembersListId = process.env.CONSTANT_CONTACT_VIRTUAL_MEMBERSHIP_LIST_ID || '';
 const ccVirtualMembersListName = process.env.CONSTANT_CONTACT_VIRTUAL_MEMBERSHIP_LIST_NAME || 'SEMCME - Virtual Members';
 const registrationUrl = process.env.VIRTUAL_MEMBERSHIP_REGISTRATION_URL || 'https://lp.constantcontactpages.com/sl/8vmbMa9';
-const constantContactConfigured = Boolean(ccAccessToken && (ccVirtualMembersListId || ccVirtualMembersListName));
+const constantContactConfigured = Boolean((ccAccessToken || (ccClientId && ccClientSecret && ccRefreshToken)) && (ccVirtualMembersListId || ccVirtualMembersListName));
+const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
 const databasePath = process.env.SQLITE_DATABASE_PATH || (process.env.VERCEL ? '/tmp/semcme.db' : join(root, 'data', 'semcme.db'));
+const ccTokenState = {
+  accessToken: ccAccessToken,
+  refreshToken: ccRefreshToken,
+  expiresAt: 0
+};
 
-await mkdir(dirname(databasePath), { recursive: true });
-const db = new DatabaseSync(databasePath);
-db.exec(`
+function sqliteDatabase() {
+  const sqlite = new DatabaseSync(databasePath);
+  const bind = (sql, params = []) => {
+    let index = 0;
+    return {
+      sql: sql.replace(/\$\d+/g, () => '?'),
+      params: params.map((value) => value ?? '')
+    };
+  };
+
+  return {
+    type: 'sqlite',
+    async exec(sql) { sqlite.exec(sql); },
+    async all(sql, params) {
+      const q = bind(sql, params);
+      return sqlite.prepare(q.sql).all(...q.params);
+    },
+    async get(sql, params) {
+      const q = bind(sql, params);
+      return sqlite.prepare(q.sql).get(...q.params);
+    },
+    async run(sql, params) {
+      const q = bind(sql, params);
+      return sqlite.prepare(q.sql).run(...q.params);
+    }
+  };
+}
+
+async function postgresDatabase() {
+  const { neon } = await import('@neondatabase/serverless');
+  const sql = neon(databaseUrl);
+  return {
+    type: 'postgres',
+    async exec(statement) {
+      for (const part of statement.split(';').map((value) => value.trim()).filter(Boolean)) {
+        await sql.query(part);
+      }
+    },
+    async all(statement, params = []) {
+      return sql.query(statement, params);
+    },
+    async get(statement, params = []) {
+      const rows = await sql.query(statement, params);
+      return rows[0] || null;
+    },
+    async run(statement, params = []) {
+      await sql.query(statement, params);
+    }
+  };
+}
+
+async function createDatabase() {
+  if (databaseUrl) return postgresDatabase();
+  await mkdir(dirname(databasePath), { recursive: true });
+  return sqliteDatabase();
+}
+
+const db = await createDatabase();
+await db.exec(db.type === 'postgres' ? `
+  CREATE TABLE IF NOT EXISTS registrations (
+    id SERIAL PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE, institution TEXT NOT NULL,
+    degrees TEXT NOT NULL, role TEXT NOT NULL, cc_status TEXT DEFAULT 'pending',
+    email_status TEXT DEFAULT 'pending', created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS members (
+    id SERIAL PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    first_name TEXT DEFAULT '',
+    last_name TEXT DEFAULT '',
+    institution TEXT DEFAULT '',
+    cc_registration_id TEXT DEFAULT '',
+    cc_status TEXT DEFAULT 'local',
+    last_cc_sync_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS support_requests (
+    id SERIAL PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL,
+    topic TEXT NOT NULL, message TEXT NOT NULL, status TEXT DEFAULT 'new',
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+` : `
   PRAGMA journal_mode = WAL;
   CREATE TABLE IF NOT EXISTS registrations (
     id INTEGER PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL,
@@ -67,15 +157,6 @@ db.exec(`
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
-  CREATE TABLE IF NOT EXISTS magic_links (
-    id INTEGER PRIMARY KEY,
-    member_id INTEGER NOT NULL,
-    token_hash TEXT NOT NULL UNIQUE,
-    expires_at TEXT NOT NULL,
-    used_at TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(member_id) REFERENCES members(id)
-  );
   CREATE TABLE IF NOT EXISTS support_requests (
     id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT NOT NULL,
     topic TEXT NOT NULL, message TEXT NOT NULL, status TEXT DEFAULT 'new',
@@ -84,17 +165,17 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `);
 
-const existingRegistrations = db.prepare('SELECT * FROM registrations ORDER BY created_at').all();
+const existingRegistrations = await db.all('SELECT * FROM registrations ORDER BY created_at');
 for (const r of existingRegistrations) {
-  db.prepare(`
+  await db.run(`
     INSERT INTO members (email, first_name, last_name, institution, cc_status, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
     ON CONFLICT(email) DO UPDATE SET
       first_name=excluded.first_name,
       last_name=excluded.last_name,
       institution=excluded.institution,
       updated_at=CURRENT_TIMESTAMP
-  `).run(r.email, r.first_name || '', r.last_name || '', r.institution || '', r.cc_status || 'legacy', r.created_at || new Date().toISOString());
+  `, [r.email, r.first_name || '', r.last_name || '', r.institution || '', r.cc_status || 'legacy', r.created_at || new Date().toISOString()]);
 }
 
 const mime = { '.html':'text/html; charset=utf-8', '.css':'text/css; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.svg':'image/svg+xml', '.png':'image/png', '.ico':'image/x-icon', '.json':'application/json; charset=utf-8' };
@@ -147,14 +228,14 @@ async function sendEmail({to, subject, html}) {
   return 'sent';
 }
 
-function upsertMemberFromContact(contact, source='constant_contact_list') {
+async function upsertMemberFromContact(contact, source='constant_contact_list') {
   const email = extractEmail(contact);
   if (!emailOk(email)) return null;
   const name = extractName(contact);
   const contactId = clean(contact.contact_id || contact.id || '', 160);
-  db.prepare(`
+  await db.run(`
     INSERT INTO members (email, first_name, last_name, institution, cc_registration_id, cc_status, last_cc_sync_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     ON CONFLICT(email) DO UPDATE SET
       first_name=COALESCE(NULLIF(excluded.first_name,''), members.first_name),
       last_name=COALESCE(NULLIF(excluded.last_name,''), members.last_name),
@@ -163,8 +244,8 @@ function upsertMemberFromContact(contact, source='constant_contact_list') {
       cc_status=excluded.cc_status,
       last_cc_sync_at=CURRENT_TIMESTAMP,
       updated_at=CURRENT_TIMESTAMP
-  `).run(email, name.firstName, name.lastName, extractInstitution(contact), contactId, source);
-  return db.prepare('SELECT * FROM members WHERE email=?').get(email);
+  `, [email, name.firstName, name.lastName, extractInstitution(contact), contactId, source]);
+  return db.get('SELECT * FROM members WHERE email=$1', [email]);
 }
 
 function extractEmail(value) {
@@ -211,8 +292,46 @@ function extractInstitution(contact) {
   return clean(values[0] || '', 200);
 }
 
-async function constantContactGet(url) {
-  const r = await fetch(url, { headers:{ Authorization:`Bearer ${ccAccessToken}` } });
+async function refreshConstantContactAccessToken() {
+  if (!ccClientId || !ccClientSecret || !ccTokenState.refreshToken) {
+    throw new Error('Constant Contact access token expired and refresh credentials are not configured.');
+  }
+  const credentials = Buffer.from(`${ccClientId}:${ccClientSecret}`).toString('base64');
+  const r = await fetch('https://authz.constantcontact.com/oauth2/default/v1/token', {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'application/json'
+    },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: ccTokenState.refreshToken
+    })
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`Constant Contact token refresh returned ${r.status}`);
+  ccTokenState.accessToken = data.access_token || '';
+  ccTokenState.refreshToken = data.refresh_token || ccTokenState.refreshToken;
+  ccTokenState.expiresAt = Date.now() + Math.max(Number(data.expires_in || 0) - 300, 60) * 1000;
+  return ccTokenState.accessToken;
+}
+
+async function constantContactAccessToken() {
+  if (ccTokenState.accessToken && (!ccTokenState.expiresAt || Date.now() < ccTokenState.expiresAt)) {
+    return ccTokenState.accessToken;
+  }
+  return refreshConstantContactAccessToken();
+}
+
+async function constantContactGet(url, retry = true) {
+  const token = await constantContactAccessToken();
+  const r = await fetch(url, { headers:{ Authorization:`Bearer ${token}` } });
+  if (r.status === 401 && retry && ccClientId && ccClientSecret && ccTokenState.refreshToken) {
+    ccTokenState.accessToken = '';
+    await refreshConstantContactAccessToken();
+    return constantContactGet(url, false);
+  }
   if (!r.ok) throw new Error(`Constant Contact returned ${r.status}`);
   return r.json();
 }
@@ -268,7 +387,7 @@ async function findConstantContactListMember(email) {
   const result = await constantContactListContacts({ email });
   if (!result.configured) return { configured:false, member:null };
   const match = result.records.find(r => extractEmail(r) === email);
-  return { configured:true, member: match ? upsertMemberFromContact(match) : null };
+  return { configured:true, member: match ? await upsertMemberFromContact(match) : null };
 }
 
 async function syncConstantContactMembers() {
@@ -276,7 +395,7 @@ async function syncConstantContactMembers() {
   if (!result.configured) return { configured:false, synced:0 };
   let synced = 0;
   for (const record of result.records) {
-    if (upsertMemberFromContact(record)) synced += 1;
+    if (await upsertMemberFromContact(record)) synced += 1;
   }
   return { configured:true, synced };
 }
@@ -299,9 +418,14 @@ function createMagicLink(memberRow) {
 }
 
 async function requestMagicLink(email) {
-  const checked = await findConstantContactListMember(email);
-  if (!checked.configured) throw Object.assign(new Error('Constant Contact list lookup is not configured for Virtual Membership yet.'), { status:503 });
-  const row = checked.member;
+  let row = await db.get('SELECT * FROM members WHERE email=$1', [email]);
+  let source = row ? 'database' : '';
+  if (!row) {
+    const checked = await findConstantContactListMember(email);
+    if (!checked.configured) throw Object.assign(new Error('Constant Contact list lookup is not configured for Virtual Membership yet.'), { status:503 });
+    row = checked.member;
+    source = row ? 'constant_contact_list' : '';
+  }
   if (!row) throw Object.assign(new Error('That email is not on the SEMCME Virtual Membership member list. Please register first.'), { status:404, registrationUrl });
   const signInUrl = createMagicLink(row);
   const mail = await sendEmail({
@@ -309,10 +433,13 @@ async function requestMagicLink(email) {
     subject: 'Your SEMCME Virtual Membership sign-in link',
     html: `<p>Use this secure link to sign in to the SEMCME Virtual Membership:</p><p><a href="${escapeHtml(signInUrl)}">Sign in to SEMCME Virtual Membership</a></p><p>This link expires in 30 minutes.</p>`
   });
-  return { emailSent: mail === 'sent', source: 'constant_contact_list', signInUrl: mail === 'not_configured' ? signInUrl : undefined };
+  if (mail === 'not_configured' && isProd) {
+    throw Object.assign(new Error('Email delivery is not configured yet.'), { status:503 });
+  }
+  return { emailSent: mail === 'sent', source, signInUrl: mail === 'not_configured' ? signInUrl : undefined };
 }
 
-function verifyMagicToken(token) {
+async function verifyMagicToken(token) {
   const [body, sig] = String(token || '').split('.');
   if (!body || !sig) return null;
   const wanted = createHmac('sha256', cookieSecret).update(body).digest('base64url');
@@ -395,7 +522,7 @@ async function api(req, res, path) {
   }
   if (path === '/api/auth/verify' && req.method === 'POST') {
     const b=await readBody(req); const token=clean(b.token,500);
-    const row = token ? verifyMagicToken(token) : null;
+    const row = token ? await verifyMagicToken(token) : null;
     if (!row) return json(res,401,{error:'That sign-in link is invalid or expired.'});
     return json(res,200,{ok:true,email:row.email},{'Set-Cookie':cookie('semcme_member',sign(`member:${row.id}`))});
   }
@@ -415,7 +542,7 @@ async function api(req, res, path) {
   if (path === '/api/support' && req.method === 'POST') {
     const b=await readBody(req); const x={name:clean(b.name,160),email:clean(b.email,200),topic:clean(b.topic,100),message:clean(b.message,4000)};
     if (!x.name || !emailOk(x.email) || !x.topic || x.message.length<10) return json(res,400,{error:'Please complete all fields and include a little more detail.'});
-    db.prepare('INSERT INTO support_requests (name,email,topic,message) VALUES (?,?,?,?)').run(x.name,x.email,x.topic,x.message);
+    await db.run('INSERT INTO support_requests (name,email,topic,message) VALUES ($1,$2,$3,$4)', [x.name,x.email,x.topic,x.message]);
     let delivered=false; try { delivered=(await sendEmail({to:process.env.SUPPORT_EMAIL || 'cszydlowski@semcme.org',subject:`Virtual Membership question: ${x.topic}`,html:`<p><strong>From:</strong> ${escapeHtml(x.name)} (${escapeHtml(x.email)})</p><p>${escapeHtml(x.message).replace(/\n/g,'<br>')}</p>`}))==='sent'; } catch(e) { console.error(e.message); }
     return json(res,201,{ok:true,delivered});
   }
@@ -431,8 +558,8 @@ async function api(req, res, path) {
       heroEvents,
       constantContactConfigured,
       registrationUrl,
-      members:db.prepare('SELECT * FROM members ORDER BY created_at DESC LIMIT 500').all(),
-      support:db.prepare('SELECT * FROM support_requests ORDER BY created_at DESC LIMIT 250').all()
+      members:await db.all('SELECT * FROM members ORDER BY created_at DESC LIMIT 500'),
+      support:await db.all('SELECT * FROM support_requests ORDER BY created_at DESC LIMIT 250')
     });
   }
   if (path === '/api/admin/sync-members' && req.method === 'POST') {
