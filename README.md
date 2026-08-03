@@ -51,7 +51,7 @@ Verify a sending domain with Resend and set:
 RESEND_API_KEY=...
 EMAIL_FROM=SEMCME Virtual Membership <members@your-domain.org>
 SUPPORT_EMAIL=cszydlowski@semcme.org
-BASE_URL=https://your-production-domain.org
+BASE_URL=https://virtual.semcme.org
 ```
 
 If email is not configured in local development, the sign-in link is shown on screen for testing.
@@ -76,7 +76,8 @@ The dashboard also lists local members and support questions.
 Set these locally in `.env.local` and in Vercel Project Settings > Environment Variables when the app is ready to connect external services:
 
 ```text
-BASE_URL=https://your-production-domain.org
+BASE_URL=https://virtual.semcme.org
+PRODUCTION_BASE_URL=https://virtual.semcme.org
 COOKIE_SECRET=use-a-long-random-secret
 ADMIN_PASSWORD=use-a-strong-admin-password
 DATABASE_URL=...

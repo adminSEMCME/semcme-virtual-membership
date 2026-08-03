@@ -48,13 +48,16 @@ $("#loginForm").addEventListener("submit", async (e) => {
     status(
       form,
       result.emailSent
-        ? "Check your email for a secure sign-in link."
-        : `Email delivery is not configured locally. <a href="${esc(result.signInUrl)}">Open your dev sign-in link</a>.`,
+        ? esc(
+            result.message ||
+              "Success. Check your email for a secure Sign-In Link. It expires in 30 minutes, can only be used once, and may take up to 3 minutes to arrive. Please check your spam or junk folder if it does not appear in your inbox.",
+          )
+        : `Email delivery is not configured locally. This dev Sign-In Link expires in 30 minutes and can only be used once. <a href="${esc(result.signInUrl)}">Open your dev sign-in link</a>.`,
       true,
     );
   } catch (x) {
     const registerLink = x.data?.registrationUrl
-      ? ` <a href="${esc(x.data.registrationUrl)}" target="_blank" rel="noopener">Register for Virtual Membership</a>.`
+      ? ` <a href="${esc(x.data.registrationUrl)}" target="_blank" rel="noopener">Register for Virtual Membership</a>, then sign in again.`
       : "";
     status(form, `${esc(x.message)}${registerLink}`);
   } finally {

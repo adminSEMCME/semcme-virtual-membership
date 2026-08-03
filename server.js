@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { readFile, mkdir } from 'node:fs/promises';
 import { dirname, extname, join, normalize } from 'node:path';
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { programs, defaultBanner } from './data/library.js';
 
@@ -31,13 +31,16 @@ await loadEnvFile('.env.local', true);
 
 const port = Number(process.env.PORT || 3000);
 const isProd = process.env.NODE_ENV === 'production';
-const baseUrl = process.env.BASE_URL || `http://localhost:${port}`;
+const configuredBaseUrl = process.env.BASE_URL || process.env.SITE_URL || '';
+const productionBaseUrl = process.env.PRODUCTION_BASE_URL || 'https://virtual.semcme.org';
+const localBaseUrl = `http://localhost:${port}`;
 const adminPassword = process.env.ADMIN_PASSWORD || 'admin-demo-2026';
 const cookieSecret = process.env.COOKIE_SECRET || 'local-development-only-change-me';
 const ccBase = 'https://api.cc.email/v3';
 const semcmeHomeUrl = process.env.SEMCME_HOME_URL || 'https://semcme.org/';
 const oneDayMs = 24 * 60 * 60 * 1000;
 const semcmeHeroRefreshMs = Math.max(Number(process.env.SEMCME_HERO_REFRESH_MS || oneDayMs), oneDayMs);
+const magicLinkTtlMs = 30 * 60 * 1000;
 const ccAccessToken = process.env.CONSTANT_CONTACT_ACCESS_TOKEN || '';
 const ccClientId = process.env.CONSTANT_CONTACT_CLIENT_ID || '';
 const ccClientSecret = process.env.CONSTANT_CONTACT_CLIENT_SECRET || '';
@@ -53,6 +56,30 @@ const ccTokenState = {
   refreshToken: ccRefreshToken,
   expiresAt: 0
 };
+
+function cleanBaseUrl(value) {
+  const url = String(value || '').trim().replace(/\/+$/, '');
+  if (!url) return '';
+  try {
+    return new URL(url).origin;
+  } catch {
+    return '';
+  }
+}
+
+function isVercelAppUrl(value) {
+  try {
+    return new URL(value).hostname.endsWith('.vercel.app');
+  } catch {
+    return false;
+  }
+}
+
+function magicLinkBaseUrl() {
+  const configured = cleanBaseUrl(configuredBaseUrl);
+  if (isProd && (!configured || isVercelAppUrl(configured))) return cleanBaseUrl(productionBaseUrl);
+  return configured || localBaseUrl;
+}
 
 function sqliteDatabase() {
   const sqlite = new DatabaseSync(databasePath);
@@ -136,6 +163,14 @@ await db.exec(db.type === 'postgres' ? `
     topic TEXT NOT NULL, message TEXT NOT NULL, status TEXT DEFAULT 'new',
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE IF NOT EXISTS magic_links (
+    id SERIAL PRIMARY KEY,
+    member_id INTEGER NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  );
   CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 ` : `
   PRAGMA journal_mode = WAL;
@@ -162,8 +197,38 @@ await db.exec(db.type === 'postgres' ? `
     topic TEXT NOT NULL, message TEXT NOT NULL, status TEXT DEFAULT 'new',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE IF NOT EXISTS magic_links (
+    id INTEGER PRIMARY KEY,
+    member_id INTEGER NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT NOT NULL,
+    used_at TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
   CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `);
+
+async function ensureMagicLinksSchema() {
+  if (db.type === 'postgres') {
+    await db.exec(`
+      ALTER TABLE magic_links ADD COLUMN IF NOT EXISTS member_id INTEGER;
+      ALTER TABLE magic_links ADD COLUMN IF NOT EXISTS token_hash TEXT;
+      ALTER TABLE magic_links ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+      ALTER TABLE magic_links ADD COLUMN IF NOT EXISTS used_at TIMESTAMPTZ;
+      CREATE UNIQUE INDEX IF NOT EXISTS magic_links_token_hash_idx ON magic_links(token_hash);
+    `);
+    return;
+  }
+
+  const columns = new Set((await db.all('PRAGMA table_info(magic_links)')).map((column) => column.name));
+  if (!columns.has('member_id')) await db.run('ALTER TABLE magic_links ADD COLUMN member_id INTEGER');
+  if (!columns.has('token_hash')) await db.run('ALTER TABLE magic_links ADD COLUMN token_hash TEXT');
+  if (!columns.has('expires_at')) await db.run('ALTER TABLE magic_links ADD COLUMN expires_at TEXT');
+  if (!columns.has('used_at')) await db.run('ALTER TABLE magic_links ADD COLUMN used_at TEXT');
+  await db.run('CREATE UNIQUE INDEX IF NOT EXISTS magic_links_token_hash_idx ON magic_links(token_hash)');
+}
+
+await ensureMagicLinksSchema();
 
 const existingRegistrations = await db.all('SELECT * FROM registrations ORDER BY created_at');
 for (const r of existingRegistrations) {
@@ -189,6 +254,7 @@ const unsign = signed => {
   return value;
 };
 const validSigned = (signed, expected) => unsign(signed) === expected;
+const tokenHash = token => createHash('sha256').update(token).digest('base64url');
 const cookies = req => Object.fromEntries((req.headers.cookie || '').split(';').filter(Boolean).map(x => { const [k,...v]=x.trim().split('='); return [k, decodeURIComponent(v.join('='))]; }));
 const memberId = req => {
   const value = unsign(cookies(req).semcme_member);
@@ -217,15 +283,100 @@ const decodeHtml = value => String(value || '')
   .replace(/&quot;/g, '"')
   .replace(/&#39;/g, "'");
 
-async function sendEmail({to, subject, html}) {
+async function sendEmail({to, subject, html, text=''}) {
   if (!process.env.RESEND_API_KEY) return 'not_configured';
+  const payload = { from:process.env.EMAIL_FROM || 'SEMCME Virtual Membership <members@semcme.org>', to:[to], subject, html };
+  if (text) payload.text = text;
   const r = await fetch('https://api.resend.com/emails', {
     method:'POST',
     headers:{ Authorization:`Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type':'application/json' },
-    body:JSON.stringify({ from:process.env.EMAIL_FROM || 'SEMCME Virtual Membership <members@semcme.org>', to:[to], subject, html })
+    body:JSON.stringify(payload)
   });
   if (!r.ok) throw new Error(`Email provider returned ${r.status}`);
   return 'sent';
+}
+
+function buildMagicLinkEmail(signInUrl) {
+  const safeSignInUrl = escapeHtml(signInUrl);
+  const logoUrl = `${magicLinkBaseUrl()}/semcme-logo.png`;
+  const subject = 'Your SEMCME Virtual Membership Sign-In Link';
+  const text = [
+    'Use this secure Sign-In Link to access your SEMCME Virtual Membership program materials:',
+    '',
+    signInUrl,
+    '',
+    'This Sign-In Link expires in 30 minutes and can only be used once.',
+    '',
+    'If you did not request this Sign-In Link, you can ignore this email.',
+    '',
+    'Southeast Michigan Center for Medical Education',
+    'https://semcme.org'
+  ].join('\n');
+  const html = `
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="x-apple-disable-message-reformatting">
+        <title>SEMCME Virtual Membership Sign-In Link</title>
+      </head>
+      <body style="margin:0;padding:0;background:#ffffff;color:#262626;font-family:Arial,Helvetica,sans-serif;">
+        <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+          Your secure SEMCME Virtual Membership Sign-In Link expires in 30 minutes.
+        </div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-collapse:collapse;">
+          <tr>
+            <td align="center" style="padding:52px 18px 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:720px;background:#ffffff;border-collapse:collapse;">
+                <tr>
+                  <td align="center" style="padding:0 0 38px;">
+                    <img src="${escapeHtml(logoUrl)}" width="292" alt="Southeast Michigan Center for Medical Education" style="display:block;width:292px;max-width:100%;height:auto;border:0;">
+                  </td>
+                </tr>
+                <tr>
+                  <td style="height:6px;background:#00519d;font-size:0;line-height:0;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td style="padding:64px 36px 0;">
+                    <h1 style="margin:0;color:#00519d;font-size:34px;line-height:1.2;font-weight:700;">Access Your Virtual Membership</h1>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:28px 36px 0;">
+                    <p style="margin:0 0 24px;color:#262626;font-size:20px;line-height:1.5;">
+                      Use the secure Sign-In Link below to sign in to the SEMCME Virtual Membership program materials.
+                    </p>
+                    <p style="margin:0;color:#262626;font-size:20px;line-height:1.5;">
+                      This Sign-In Link expires in 30 minutes and can only be used once.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding:48px 36px 44px;">
+                    <a href="${safeSignInUrl}" style="display:inline-block;min-width:260px;padding:18px 28px;border-radius:8px;background:#00519d;color:#ffffff;font-size:20px;line-height:1.2;text-align:center;text-decoration:none;font-weight:700;">
+                      Open Virtual Membership
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:0 36px 18px;">
+                    <p style="margin:0 0 24px;color:#555555;font-size:17px;line-height:1.5;">
+                      If you did not request this Sign-In Link, you can ignore this email.
+                    </p>
+                    <p style="margin:0;color:#555555;font-size:17px;line-height:1.5;">
+                      &mdash; SEMCME Virtual Membership Team
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+  return { subject, text, html };
 }
 
 async function upsertMemberFromContact(contact, source='constant_contact_list') {
@@ -400,7 +551,9 @@ async function syncConstantContactMembers() {
   return { configured:true, synced };
 }
 
-function createMagicLink(memberRow) {
+async function createMagicLink(memberRow) {
+  const nonce = randomBytes(12).toString('base64url');
+  const expiresAt = Date.now() + magicLinkTtlMs;
   const payload = {
     email: memberRow.email,
     first_name: memberRow.first_name || '',
@@ -408,13 +561,17 @@ function createMagicLink(memberRow) {
     institution: memberRow.institution || '',
     contact_id: memberRow.cc_registration_id || '',
     source: memberRow.cc_status || 'constant_contact_list',
-    exp: Date.now() + 30 * 60 * 1000,
-    nonce: randomBytes(12).toString('base64url')
+    exp: expiresAt,
+    nonce
   };
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const sig = createHmac('sha256', cookieSecret).update(body).digest('base64url');
   const token = `${body}.${sig}`;
-  return `${baseUrl}/?token=${encodeURIComponent(token)}`;
+  await db.run(
+    'INSERT INTO magic_links (member_id, token_hash, expires_at) VALUES ($1, $2, $3)',
+    [memberRow.id, tokenHash(token), new Date(expiresAt).toISOString()]
+  );
+  return `${magicLinkBaseUrl()}/?token=${encodeURIComponent(token)}`;
 }
 
 async function requestMagicLink(email) {
@@ -426,17 +583,22 @@ async function requestMagicLink(email) {
     row = checked.member;
     source = row ? 'constant_contact_list' : '';
   }
-  if (!row) throw Object.assign(new Error('That email is not on the SEMCME Virtual Membership member list. Please register first.'), { status:404, registrationUrl });
-  const signInUrl = createMagicLink(row);
+  if (!row) throw Object.assign(new Error('This email is not registered for SEMCME Virtual Membership.'), { status:404, registrationUrl });
+  const signInUrl = await createMagicLink(row);
+  const signInEmail = buildMagicLinkEmail(signInUrl);
   const mail = await sendEmail({
     to: email,
-    subject: 'Your SEMCME Virtual Membership sign-in link',
-    html: `<p>Use this secure link to sign in to the SEMCME Virtual Membership:</p><p><a href="${escapeHtml(signInUrl)}">Sign in to SEMCME Virtual Membership</a></p><p>This link expires in 30 minutes.</p>`
+    ...signInEmail
   });
   if (mail === 'not_configured' && isProd) {
     throw Object.assign(new Error('Email delivery is not configured yet.'), { status:503 });
   }
-  return { emailSent: mail === 'sent', source, signInUrl: mail === 'not_configured' ? signInUrl : undefined };
+  return {
+    emailSent: mail === 'sent',
+    source,
+    signInUrl: mail === 'not_configured' ? signInUrl : undefined,
+    message: 'Success. Check your email for a secure Sign-In Link. It expires in 30 minutes, can only be used once, and may take up to 3 minutes to arrive. Please check your spam or junk folder if it does not appear in your inbox.'
+  };
 }
 
 async function verifyMagicToken(token) {
@@ -453,6 +615,11 @@ async function verifyMagicToken(token) {
   }
 
   if (!payload?.exp || Date.now() > Number(payload.exp)) return null;
+  const consumed = await db.get(
+    'UPDATE magic_links SET used_at=CURRENT_TIMESTAMP WHERE token_hash=$1 AND used_at IS NULL RETURNING token_hash',
+    [tokenHash(`${body}.${sig}`)]
+  );
+  if (!consumed) return null;
   const email = clean(payload.email, 200).toLowerCase();
   if (!emailOk(email)) return null;
 
