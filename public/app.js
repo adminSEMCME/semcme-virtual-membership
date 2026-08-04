@@ -97,6 +97,7 @@ function resourceCard(r) {
 }
 
 function playlistPlayer(r) {
+  if (r.embed === false) return resourceCard(r);
   if (!r.videos?.length) return videoResource(r);
   const first = r.videos[0];
   return `<article class="playlist-player">
@@ -121,6 +122,7 @@ function playlistPlayer(r) {
 }
 
 function videoResource(r) {
+  if (r.embed === false) return resourceCard(r);
   const embedUrl = youtubeEmbedUrl(r.url, r.type);
   if (!embedUrl) return resourceCard(r);
 
@@ -141,7 +143,7 @@ function videoResource(r) {
 }
 
 function resourceCollection(resources, archive = false) {
-  const hasVideo = resources.some((r) => youtubeEmbedUrl(r.url, r.type));
+  const hasVideo = resources.some((r) => r.embed !== false && youtubeEmbedUrl(r.url, r.type));
   const className = hasVideo ? "video-grid" : archive ? "archive-grid" : "resource-list";
   return `<div class="${className}">${resources.map((r) => (hasVideo ? (r.type === "playlist" ? playlistPlayer(r) : videoResource(r)) : resourceCard(r))).join("")}</div>`;
 }

@@ -6,8 +6,8 @@ A self-contained member portal for SEMCME virtual membership access. It includes
 - Local SQLite member and support-request storage
 - Constant Contact Virtual Members contact-list lookup and admin sync
 - SEMCME.org virtual-program hero carousel sync
-- Ten organized program areas with current and archived resources
-- Staff dashboard for member sync, virtual program refresh, and support inquiries
+- Database-managed program areas with upcoming, current, and archived resources
+- Staff dashboard for content updates, member sync, virtual program refresh, and support inquiries
 
 ## Run locally
 
@@ -64,10 +64,11 @@ The server refreshes the SEMCME.org scrape once per day by default, and open mem
 
 ## Staff workflow
 
-Visit `/admin.html`, sign in with `ADMIN_PASSWORD`, and use:
+Visit `/admin.html`, sign in with `ADMIN_PASSWORD` or the shared `GLOBAL_ADMIN_PASSWORD`, and use:
 
 - `Refresh programs` to re-scrape SEMCME.org virtual hero slides.
 - `Sync members` to import contacts from the Constant Contact Virtual Members list.
+- `Library content` to add, update, hide, move, or remove program areas and resources in the Upcoming programs, Current & previous academic year, and Archive sections.
 
 The dashboard also lists local members and support questions.
 
@@ -78,6 +79,8 @@ Set these locally in `.env.local` and in Vercel Project Settings > Environment V
 ```text
 BASE_URL=https://virtual.semcme.org
 PRODUCTION_BASE_URL=https://virtual.semcme.org
+GLOBAL_ADMIN_USERNAME=optional-shared-admin-username
+GLOBAL_ADMIN_PASSWORD=use-the-shared-admin-password
 COOKIE_SECRET=use-a-long-random-secret
 ADMIN_PASSWORD=use-a-strong-admin-password
 DATABASE_URL=...

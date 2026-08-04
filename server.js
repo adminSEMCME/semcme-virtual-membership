@@ -3,7 +3,7 @@ import { readFile, mkdir } from 'node:fs/promises';
 import { dirname, extname, join, normalize } from 'node:path';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { programs, defaultBanner } from './data/library.js';
+import { programs as defaultPrograms, defaultBanner } from './data/library.js';
 
 const root = new URL('.', import.meta.url).pathname;
 
@@ -34,7 +34,8 @@ const isProd = process.env.NODE_ENV === 'production';
 const configuredBaseUrl = process.env.BASE_URL || process.env.SITE_URL || '';
 const productionBaseUrl = process.env.PRODUCTION_BASE_URL || 'https://virtual.semcme.org';
 const localBaseUrl = `http://localhost:${port}`;
-const adminPassword = process.env.ADMIN_PASSWORD || 'admin-demo-2026';
+const adminUsername = process.env.GLOBAL_ADMIN_USERNAME || process.env.ADMIN_USERNAME || '';
+const adminPassword = process.env.GLOBAL_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || 'admin-demo-2026';
 const cookieSecret = process.env.COOKIE_SECRET || 'local-development-only-change-me';
 const ccBase = 'https://api.cc.email/v3';
 const semcmeHomeUrl = process.env.SEMCME_HOME_URL || 'https://semcme.org/';
@@ -87,7 +88,7 @@ function sqliteDatabase() {
     let index = 0;
     return {
       sql: sql.replace(/\$\d+/g, () => '?'),
-      params: params.map((value) => value ?? '')
+      params: params.map((value) => typeof value === 'boolean' ? (value ? 1 : 0) : (value ?? ''))
     };
   };
 
@@ -171,6 +172,33 @@ await db.exec(db.type === 'postgres' ? `
     used_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE IF NOT EXISTS library_programs (
+    slug TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    short TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    position INTEGER NOT NULL DEFAULT 0,
+    enabled BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS library_resources (
+    id TEXT PRIMARY KEY,
+    program_slug TEXT NOT NULL REFERENCES library_programs(slug) ON DELETE CASCADE,
+    section TEXT NOT NULL,
+    title TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'resource',
+    url TEXT NOT NULL,
+    group_name TEXT DEFAULT '',
+    presenter TEXT DEFAULT '',
+    item_date TEXT DEFAULT '',
+    meta TEXT DEFAULT '',
+    embed_enabled BOOLEAN NOT NULL DEFAULT true,
+    videos_json TEXT DEFAULT '[]',
+    position INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+  );
   CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 ` : `
   PRAGMA journal_mode = WAL;
@@ -204,6 +232,33 @@ await db.exec(db.type === 'postgres' ? `
     expires_at TEXT NOT NULL,
     used_at TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS library_programs (
+    slug TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    short TEXT DEFAULT '',
+    description TEXT DEFAULT '',
+    position INTEGER NOT NULL DEFAULT 0,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS library_resources (
+    id TEXT PRIMARY KEY,
+    program_slug TEXT NOT NULL,
+    section TEXT NOT NULL,
+    title TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'resource',
+    url TEXT NOT NULL,
+    group_name TEXT DEFAULT '',
+    presenter TEXT DEFAULT '',
+    item_date TEXT DEFAULT '',
+    meta TEXT DEFAULT '',
+    embed_enabled INTEGER NOT NULL DEFAULT 1,
+    videos_json TEXT DEFAULT '[]',
+    position INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
   CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `);
@@ -270,6 +325,7 @@ const readBody = async req => {
   try { return JSON.parse(raw || '{}'); } catch { throw new Error('Invalid JSON'); }
 };
 const clean = (v, max=300) => String(v || '').trim().replace(/[\u0000-\u001f]/g, '').slice(0,max);
+const slugOk = v => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v);
 const emailOk = v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stripHtml = html => decodeHtml(String(html || '').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ' ').replace(/\s+\n/g, '\n').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim());
@@ -282,6 +338,239 @@ const decodeHtml = value => String(value || '')
   .replace(/&gt;/g, '>')
   .replace(/&quot;/g, '"')
   .replace(/&#39;/g, "'");
+
+function resourceShouldEmbed(resource) {
+  const title = String(resource.title || '').toLowerCase();
+  return ![
+    'pediatric lunch & learn — videos from 2022 to 2025',
+    'ob/gyn and fetal assessment — videos from 2020 to 2024'
+  ].includes(title);
+}
+
+function resourceIsRetired(resource) {
+  return String(resource.title || '').toLowerCase() === 'structural and social antecedents of health — virtual training';
+}
+
+function normalizeSection(section) {
+  return ['upcoming', 'current', 'archives'].includes(section) ? section : '';
+}
+
+function parseVideos(raw) {
+  try {
+    const videos = JSON.parse(raw || '[]');
+    return Array.isArray(videos) ? videos.filter(v => v?.title && v?.url) : [];
+  } catch {
+    return [];
+  }
+}
+
+function rowToResource(row) {
+  const resource = {
+    id: row.id,
+    title: row.title,
+    type: row.type || 'resource',
+    url: row.url,
+    group: row.group_name || '',
+    presenter: row.presenter || '',
+    date: row.item_date || '',
+    meta: row.meta || '',
+    position: Number(row.position || 0),
+    embed: Boolean(row.embed_enabled),
+    videos: parseVideos(row.videos_json)
+  };
+  Object.keys(resource).forEach((key) => {
+    if (resource[key] === '' || (Array.isArray(resource[key]) && resource[key].length === 0)) delete resource[key];
+  });
+  return resource;
+}
+
+async function seedLibraryContent() {
+  const existing = await db.get('SELECT COUNT(*) AS count FROM library_programs');
+  if (Number(existing?.count || 0) > 0) return;
+
+  for (const [programIndex, program] of defaultPrograms.entries()) {
+    await db.run(`
+      INSERT INTO library_programs (slug, name, short, description, position, enabled)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT(slug) DO UPDATE SET
+        name=excluded.name,
+        short=excluded.short,
+        description=excluded.description,
+        position=excluded.position,
+        enabled=excluded.enabled,
+        updated_at=CURRENT_TIMESTAMP
+    `, [program.slug, program.name, program.short || '', program.description || '', programIndex, true]);
+
+    for (const section of ['upcoming', 'current', 'archives']) {
+      const resources = program[section] || [];
+      for (const [resourceIndex, resource] of resources.entries()) {
+        if (resourceIsRetired(resource)) continue;
+        await db.run(`
+          INSERT INTO library_resources (
+            id, program_slug, section, title, type, url, group_name, presenter, item_date, meta, embed_enabled, videos_json, position
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        `, [
+          randomBytes(16).toString('hex'),
+          program.slug,
+          section,
+          resource.title || 'Untitled resource',
+          resource.type || 'resource',
+          resource.url || '#',
+          resource.group || '',
+          resource.presenter || '',
+          resource.date || '',
+          resource.meta || '',
+          resourceShouldEmbed(resource),
+          JSON.stringify(resource.videos || []),
+          resourceIndex
+        ]);
+      }
+    }
+  }
+}
+
+async function getLibraryPrograms({ includeDisabled = false } = {}) {
+  const enabledWhere = includeDisabled ? '' : (db.type === 'postgres' ? 'WHERE enabled=true' : 'WHERE enabled=1');
+  const programRows = await db.all(`
+    SELECT * FROM library_programs
+    ${enabledWhere}
+    ORDER BY position ASC, name ASC
+  `);
+  const resourceRows = await db.all('SELECT * FROM library_resources ORDER BY position ASC, title ASC');
+  const byProgram = new Map();
+  for (const row of resourceRows) {
+    if (!byProgram.has(row.program_slug)) byProgram.set(row.program_slug, []);
+    byProgram.get(row.program_slug).push(row);
+  }
+  return programRows.map((program) => {
+    const resources = byProgram.get(program.slug) || [];
+    const out = {
+      slug: program.slug,
+      name: program.name,
+      short: program.short || '',
+      description: program.description || '',
+      position: Number(program.position || 0),
+      enabled: program.enabled === true || program.enabled === 1 || program.enabled === '1' || program.enabled === 't',
+      upcoming: [],
+      current: [],
+      archives: []
+    };
+    for (const row of resources) {
+      if (!normalizeSection(row.section)) continue;
+      out[row.section].push(rowToResource(row));
+    }
+    return out;
+  });
+}
+
+async function saveLibraryProgram(payload = {}) {
+  const slug = clean(payload.slug, 100).toLowerCase();
+  const name = clean(payload.name, 180);
+  if (!slugOk(slug)) throw Object.assign(new Error('Use a URL-safe program slug like faculty-development.'), { status:400 });
+  if (!name) throw Object.assign(new Error('Program name is required.'), { status:400 });
+  await db.run(`
+    INSERT INTO library_programs (slug, name, short, description, position, enabled)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    ON CONFLICT(slug) DO UPDATE SET
+      name=excluded.name,
+      short=excluded.short,
+      description=excluded.description,
+      position=excluded.position,
+      enabled=excluded.enabled,
+      updated_at=CURRENT_TIMESTAMP
+  `, [
+    slug,
+    name,
+    clean(payload.short, 12).toUpperCase(),
+    clean(payload.description, 600),
+    Number(payload.position || 0) || 0,
+    payload.enabled === false || payload.enabled === 'false' ? false : true
+  ]);
+  return { slug };
+}
+
+async function deleteLibraryProgram(slug) {
+  slug = clean(slug, 100);
+  if (!slugOk(slug)) throw Object.assign(new Error('Program slug is required.'), { status:400 });
+  await db.run('DELETE FROM library_resources WHERE program_slug=$1', [slug]);
+  await db.run('DELETE FROM library_programs WHERE slug=$1', [slug]);
+}
+
+function normalizeResourcePayload(payload = {}) {
+  const section = normalizeSection(clean(payload.section, 40));
+  const type = clean(payload.type || 'resource', 40);
+  return {
+    id: clean(payload.id, 80),
+    programSlug: clean(payload.programSlug || payload.program_slug, 100),
+    section,
+    title: clean(payload.title, 240),
+    type: ['recording', 'playlist', 'course', 'resource'].includes(type) ? type : 'resource',
+    url: clean(payload.url, 1000),
+    groupName: clean(payload.group || payload.groupName || payload.group_name, 160),
+    presenter: clean(payload.presenter, 500),
+    itemDate: clean(payload.date || payload.itemDate || payload.item_date, 120),
+    meta: clean(payload.meta, 240),
+    embedEnabled: payload.embedEnabled === false || payload.embed_enabled === false || payload.embedEnabled === 'false' ? false : true,
+    position: Number(payload.position || 0) || 0
+  };
+}
+
+async function saveLibraryResource(payload = {}) {
+  const item = normalizeResourcePayload(payload);
+  if (!slugOk(item.programSlug)) throw Object.assign(new Error('Choose a program for this item.'), { status:400 });
+  if (!item.section) throw Object.assign(new Error('Choose upcoming, current, or archive.'), { status:400 });
+  if (!item.title) throw Object.assign(new Error('Title is required.'), { status:400 });
+  if (!item.url || !/^https?:\/\//i.test(item.url)) throw Object.assign(new Error('Enter a full https:// URL.'), { status:400 });
+  const program = await db.get('SELECT slug FROM library_programs WHERE slug=$1', [item.programSlug]);
+  if (!program) throw Object.assign(new Error('That program does not exist.'), { status:400 });
+
+  const existing = item.id ? await db.get('SELECT videos_json FROM library_resources WHERE id=$1', [item.id]) : null;
+  const id = item.id && existing ? item.id : randomBytes(16).toString('hex');
+  const videosJson = existing?.videos_json || '[]';
+  await db.run(`
+    INSERT INTO library_resources (
+      id, program_slug, section, title, type, url, group_name, presenter, item_date, meta, embed_enabled, videos_json, position
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    ON CONFLICT(id) DO UPDATE SET
+      program_slug=excluded.program_slug,
+      section=excluded.section,
+      title=excluded.title,
+      type=excluded.type,
+      url=excluded.url,
+      group_name=excluded.group_name,
+      presenter=excluded.presenter,
+      item_date=excluded.item_date,
+      meta=excluded.meta,
+      embed_enabled=excluded.embed_enabled,
+      position=excluded.position,
+      updated_at=CURRENT_TIMESTAMP
+  `, [
+    id,
+    item.programSlug,
+    item.section,
+    item.title,
+    item.type,
+    item.url,
+    item.groupName,
+    item.presenter,
+    item.itemDate,
+    item.meta,
+    item.embedEnabled,
+    videosJson,
+    item.position
+  ]);
+  return { id };
+}
+
+async function deleteLibraryResource(id) {
+  id = clean(id, 80);
+  if (!id) throw Object.assign(new Error('Resource id is required.'), { status:400 });
+  await db.run('DELETE FROM library_resources WHERE id=$1', [id]);
+}
+
+await seedLibraryContent();
 
 async function sendEmail({to, subject, html, text=''}) {
   if (!process.env.RESEND_API_KEY) return 'not_configured';
@@ -698,7 +987,7 @@ async function api(req, res, path) {
     if (!member(req)) return json(res,401,{error:'Member login required.'});
     let events = [];
     try { events = await getVirtualEvents(); } catch(e) { console.error(e.message); }
-    return json(res,200,{banner:defaultBanner,events,programs});
+    return json(res,200,{banner:defaultBanner,events,programs:await getLibraryPrograms()});
   }
   if (path === '/api/virtual-events' && req.method === 'GET') {
     if (!member(req)) return json(res,401,{error:'Member login required.'});
@@ -714,7 +1003,9 @@ async function api(req, res, path) {
     return json(res,201,{ok:true,delivered});
   }
   if (path === '/api/admin/login' && req.method === 'POST') {
-    const b=await readBody(req); if (clean(b.password,200)!==adminPassword) return json(res,401,{error:'Invalid admin password.'});
+    const b=await readBody(req);
+    if (adminUsername && clean(b.username,200).toLowerCase()!==adminUsername.toLowerCase()) return json(res,401,{error:'Invalid admin login.'});
+    if (clean(b.password,200)!==adminPassword) return json(res,401,{error:'Invalid admin login.'});
     return json(res,200,{ok:true},{'Set-Cookie':cookie('semcme_admin',sign('admin'),1)});
   }
   if (path === '/api/admin/dashboard' && req.method === 'GET') {
@@ -725,9 +1016,30 @@ async function api(req, res, path) {
       heroEvents,
       constantContactConfigured,
       registrationUrl,
+      libraryPrograms:await getLibraryPrograms({ includeDisabled:true }),
       members:await db.all('SELECT * FROM members ORDER BY created_at DESC LIMIT 500'),
       support:await db.all('SELECT * FROM support_requests ORDER BY created_at DESC LIMIT 250')
     });
+  }
+  if (path === '/api/admin/library/program' && req.method === 'POST') {
+    if (!admin(req)) return json(res,401,{error:'Admin login required.'});
+    try { return json(res,200,{ok:true, ...(await saveLibraryProgram(await readBody(req)))}); }
+    catch(e) { return json(res,e.status || 500,{error:e.message || 'Unable to save that program.'}); }
+  }
+  if (path === '/api/admin/library/program' && req.method === 'DELETE') {
+    if (!admin(req)) return json(res,401,{error:'Admin login required.'});
+    try { await deleteLibraryProgram(new URL(req.url, 'http://localhost').searchParams.get('slug')); return json(res,200,{ok:true}); }
+    catch(e) { return json(res,e.status || 500,{error:e.message || 'Unable to delete that program.'}); }
+  }
+  if (path === '/api/admin/library/resource' && req.method === 'POST') {
+    if (!admin(req)) return json(res,401,{error:'Admin login required.'});
+    try { return json(res,200,{ok:true, ...(await saveLibraryResource(await readBody(req)))}); }
+    catch(e) { return json(res,e.status || 500,{error:e.message || 'Unable to save that library item.'}); }
+  }
+  if (path === '/api/admin/library/resource' && req.method === 'DELETE') {
+    if (!admin(req)) return json(res,401,{error:'Admin login required.'});
+    try { await deleteLibraryResource(new URL(req.url, 'http://localhost').searchParams.get('id')); return json(res,200,{ok:true}); }
+    catch(e) { return json(res,e.status || 500,{error:e.message || 'Unable to delete that library item.'}); }
   }
   if (path === '/api/admin/sync-members' && req.method === 'POST') {
     if (!admin(req)) return json(res,401,{error:'Admin login required.'});

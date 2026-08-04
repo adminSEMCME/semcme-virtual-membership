@@ -30,13 +30,20 @@
         <span class="mini-kicker">Staff access</span>
         <h1>Membership administration</h1>
         <p>
-          Sync member access and review incoming support questions.
+          Manage member access, library content, and incoming support questions.
         </p>
         <form id="adminLoginForm">
+          <label
+            >Admin username<input
+              name="username"
+              type="text"
+              autocomplete="username" /></label
+          >
           <label
             >Admin password<input
               name="password"
               type="password"
+              autocomplete="current-password"
               required /></label
           ><button class="primary-button">Sign in <span>→</span></button>
           <p class="form-status"></p>
@@ -52,6 +59,114 @@
         </div>
         <div id="stats" class="stats"></div>
         <div class="admin-grid">
+          <section class="admin-panel content-panel full">
+            <div class="panel-title">
+              <div>
+                <h2>Library content</h2>
+                <p>
+                  Add, update, move, or remove items shown in Upcoming programs,
+                  Current & previous academic year, and Archive.
+                </p>
+              </div>
+            </div>
+            <div class="content-tools">
+              <div class="program-editor">
+                <div class="editor-title">
+                  <h3>Program area</h3>
+                  <button id="newProgram" class="outline-button" type="button">
+                    New program
+                  </button>
+                </div>
+                <label
+                  >Select program<select id="programEditorSelect"></select
+                ></label>
+                <form id="programForm" class="field-grid">
+                  <label
+                    >Slug<input name="slug" required placeholder="faculty-development"
+                  /></label>
+                  <label
+                    >Name<input name="name" required placeholder="Faculty Development"
+                  /></label>
+                  <label
+                    >Short label<input name="short" maxlength="4" placeholder="FD"
+                  /></label>
+                  <label
+                    >Display order<input name="position" type="number" step="1"
+                  /></label>
+                  <label class="wide"
+                    >Description<textarea name="description" rows="3"></textarea
+                  ></label>
+                  <label class="check-row"
+                    ><input name="enabled" type="checkbox" checked /> Show on member site</label
+                  >
+                  <div class="form-actions wide">
+                    <button class="primary-button" type="submit">Save program</button>
+                    <button id="deleteProgram" class="danger-button" type="button">
+                      Delete program
+                    </button>
+                  </div>
+                </form>
+              </div>
+              <div class="resource-editor">
+                <div class="editor-title">
+                  <h3>Library item</h3>
+                  <button id="newResource" class="outline-button" type="button">
+                    New item
+                  </button>
+                </div>
+                <form id="resourceForm" class="field-grid">
+                  <input name="id" type="hidden" />
+                  <label
+                    >Section<select name="section" required>
+                      <option value="upcoming">Upcoming programs</option>
+                      <option value="current">Current & previous academic year</option>
+                      <option value="archives">Archive</option>
+                    </select></label
+                  >
+                  <label
+                    >Type<select name="type">
+                      <option value="recording">Recording</option>
+                      <option value="playlist">YouTube playlist</option>
+                      <option value="course">Course / registration</option>
+                      <option value="resource">Resource / link</option>
+                    </select></label
+                  >
+                  <label class="wide"
+                    >Title<input name="title" required
+                  /></label>
+                  <label class="wide"
+                    >URL<input name="url" type="url" required placeholder="https://..."
+                  /></label>
+                  <label
+                    >Group<input name="groupName" placeholder="Hot Topics"
+                  /></label>
+                  <label
+                    >Presenter<input name="presenter"
+                  /></label>
+                  <label
+                    >Date<input name="itemDate" placeholder="October 3, 2025"
+                  /></label>
+                  <label
+                    >Meta<input name="meta" placeholder="Registration"
+                  /></label>
+                  <label
+                    >Display order<input name="position" type="number" step="1"
+                  /></label>
+                  <label class="check-row"
+                    ><input name="embedEnabled" type="checkbox" checked /> Embed YouTube player when possible</label
+                  >
+                  <div class="form-actions wide">
+                    <button class="primary-button" type="submit">Save item</button>
+                    <button id="deleteResource" class="danger-button" type="button">
+                      Delete item
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+            <p id="contentStatus" class="form-status"></p>
+            <div id="contentRows" class="content-rows"></div>
+          </section>
           <section class="admin-panel sync-panel full">
             <div class="panel-title">
               <div>
