@@ -60,7 +60,7 @@
   display: block;
   font-weight: 700;
   font-size: 13px;
-  margin: 24px 0 16px;
+  margin: 14px 0 0;
 }
 .admin-login input,
 .admin-panel input,
@@ -68,12 +68,23 @@
 .admin-panel textarea {
   width: 100%;
   display: block;
-  margin-top: 6px;
-  padding: 11px 13px;
+  margin-top: 5px;
+  padding: 9px 12px;
   border: 1px solid #cbd7dc;
   border-radius: 8px;
   background: #fff;
   font: inherit;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.admin-login input,
+.admin-panel input,
+.admin-panel select {
+  height: 42px;
+}
+.admin-panel textarea {
+  min-height: 92px;
+  resize: vertical;
 }
 .admin-title {
   display: flex;
@@ -93,7 +104,9 @@
   color: var(--blue);
   font-weight: 700;
   border-radius: 8px;
-  padding: 10px 16px;
+  min-width: 150px;
+  min-height: 42px;
+  padding: 9px 16px;
   transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 .outline-button:hover:not(:disabled) {
@@ -134,7 +147,7 @@
 .admin-panel {
   background: #fff;
   border-radius: 15px;
-  padding: 28px;
+  padding: 24px;
   box-shadow: 0 8px 30px rgba(8, 45, 73, 0.06);
 }
 .admin-panel h2 {
@@ -147,7 +160,12 @@
   font-size: 13px;
 }
 .admin-panel .primary-button {
-  margin-top: 22px;
+  width: auto;
+  min-width: 170px;
+  min-height: 44px;
+  justify-content: center;
+  margin-top: 18px;
+  padding: 10px 18px;
   transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
 .admin-panel .primary-button:hover:not(:disabled) {
@@ -166,7 +184,9 @@
   color: #a73d3d;
   font-weight: 800;
   border-radius: 8px;
-  padding: 11px 16px;
+  min-width: 150px;
+  min-height: 44px;
+  padding: 10px 16px;
   transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 .danger-button:hover:not(:disabled) {
@@ -257,14 +277,14 @@ button.is-loading::after {
 .content-tools {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 22px;
-  margin-top: 18px;
+  gap: 16px;
+  margin-top: 16px;
 }
 .program-editor,
 .resource-editor {
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 20px;
+  padding: 18px;
   background: #fbfdfe;
 }
 .editor-title,
@@ -299,19 +319,19 @@ button.is-loading::after {
 .workflow-steps {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
+  gap: 9px;
   list-style: none;
-  margin: 22px 0 0;
+  margin: 16px 0 0;
   padding: 0;
 }
 .workflow-steps li {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #f8fbfc;
-  padding: 14px;
+  padding: 12px 14px;
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 4px;
   align-items: start;
 }
 .workflow-steps strong,
@@ -331,18 +351,18 @@ button.is-loading::after {
   line-height: 1.45;
 }
 .field-help {
-  margin: 12px 0 0;
+  margin: 8px 0 0;
 }
 .compact-help {
   margin-top: 0;
   border: 1px solid #dce8ee;
   background: #f8fbfc;
   border-radius: 8px;
-  padding: 11px 13px;
+  padding: 9px 12px;
 }
 .admin-panel label small {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   font-weight: 500;
 }
 .admin-panel input[readonly] {
@@ -352,7 +372,7 @@ button.is-loading::after {
 .field-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 14px;
+  gap: 8px 14px;
 }
 .field-grid .wide,
 .form-actions.wide {
@@ -362,7 +382,7 @@ button.is-loading::after {
   display: flex !important;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
+  min-height: 36px;
 }
 .check-row input {
   width: auto;
@@ -370,10 +390,13 @@ button.is-loading::after {
 }
 .form-actions {
   justify-content: flex-start;
-  margin-top: 4px;
+  margin-top: 10px;
 }
 .form-actions .primary-button {
   margin-top: 0;
+}
+.form-actions button {
+  flex: 0 0 170px;
 }
 .content-rows {
   display: grid;
@@ -385,8 +408,8 @@ button.is-loading::after {
   align-items: start;
   gap: 12px;
   border-top: 1px solid var(--line);
-  margin-top: 24px;
-  padding-top: 22px;
+  margin-top: 18px;
+  padding-top: 18px;
 }
 .posted-list-head p {
   margin: 4px 0 0;
@@ -498,9 +521,13 @@ td small {
   padding: 3px 7px;
   margin: 2px;
 }
+.status-pill.cc {
+  background: #e3f3ec;
+  color: #146c4d;
+}
 .status-pill.off {
-  background: #f4eee8;
-  color: #9a572e;
+  background: #edf1f4;
+  color: #506673;
 }
 .full {
   grid-column: 1/-1;

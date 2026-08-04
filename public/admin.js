@@ -53,7 +53,9 @@ function formObject(form) {
 }
 
 function badge(s) {
-  return `<span class="status-pill ${s === "constant_contact" ? "" : "off"}">${esc(String(s || "local").replaceAll("_", " "))}</span>`;
+  const source = String(s || "local");
+  const isConstantContact = source.startsWith("constant_contact");
+  return `<span class="status-pill ${isConstantContact ? "cc" : "off"}">${esc(source.replaceAll("_", " "))}</span>`;
 }
 
 function sectionLabel(section) {

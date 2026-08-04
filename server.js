@@ -691,6 +691,7 @@ async function upsertMemberFromContact(contact, source='constant_contact_list') 
   if (!emailOk(email)) return null;
   const name = extractName(contact);
   const contactId = clean(contact.contact_id || contact.id || '', 160);
+  const institution = await extractInstitution(contact);
   await db.run(`
     INSERT INTO members (email, first_name, last_name, institution, cc_registration_id, cc_status, last_cc_sync_at, updated_at)
     VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -702,7 +703,7 @@ async function upsertMemberFromContact(contact, source='constant_contact_list') 
       cc_status=excluded.cc_status,
       last_cc_sync_at=CURRENT_TIMESTAMP,
       updated_at=CURRENT_TIMESTAMP
-  `, [email, name.firstName, name.lastName, extractInstitution(contact), contactId, source]);
+  `, [email, name.firstName, name.lastName, institution, contactId, source]);
   return db.get('SELECT * FROM members WHERE email=$1', [email]);
 }
 
@@ -735,19 +736,75 @@ function extractName(contact) {
   return { firstName: full[0] || '', lastName: full.slice(1).join(' ') };
 }
 
-function extractInstitution(contact) {
+function customFieldId(item) {
+  return clean(item?.custom_field_id || item?.customFieldId || item?.id || item?.field_id || item?.fieldId || '', 160);
+}
+
+function customFieldName(item) {
+  return clean(item?.name || item?.label || item?.custom_field_name || item?.customFieldName || item?.field_name || item?.fieldName || '', 200);
+}
+
+function customFieldValue(item) {
+  const value = item?.value ?? item?.answer ?? item?.field_value ?? item?.fieldValue ?? item?.text;
+  return typeof value === 'string' ? clean(value, 200) : '';
+}
+
+let ccCustomFieldNameCache = null;
+async function constantContactCustomFieldNames() {
+  if (ccCustomFieldNameCache) return ccCustomFieldNameCache;
+  ccCustomFieldNameCache = new Map();
+  try {
+    let url = `${ccBase}/contact_custom_fields?limit=100`;
+    for (let page = 0; page < 10 && url; page += 1) {
+      const data = await constantContactGet(url);
+      const fields = data.custom_fields || data.records || [];
+      for (const field of fields) {
+        const id = customFieldId(field);
+        const name = customFieldName(field);
+        if (id && name) ccCustomFieldNameCache.set(id, name);
+      }
+      url = constantContactNextUrl(data);
+    }
+  } catch {
+    /* Custom field labels are a best-effort enhancement; contact sync can continue without them. */
+  }
+  return ccCustomFieldNameCache;
+}
+
+function directInstitutionValues(contact) {
   const values = [];
-  const walk = v => {
+  const walk = (v, path = '') => {
     if (!v) return;
-    if (Array.isArray(v)) return v.forEach(walk);
+    if (Array.isArray(v)) return v.forEach((item, index) => walk(item, `${path}[${index}]`));
     if (typeof v !== 'object') return;
     for (const [key, item] of Object.entries(v)) {
-      if (/institution|organization|company/i.test(key) && typeof item === 'string') values.push(item);
-      else walk(item);
+      const nextPath = path ? `${path}.${key}` : key;
+      if (/institution|organization|company|employer/i.test(key) && typeof item === 'string') values.push(item);
+      else walk(item, nextPath);
     }
   };
   walk(contact);
-  return clean(values[0] || '', 200);
+  return values.map((value) => clean(value, 200)).filter(Boolean);
+}
+
+async function extractInstitution(contact) {
+  const customFields = [
+    ...(Array.isArray(contact.custom_fields) ? contact.custom_fields : []),
+    ...(Array.isArray(contact.customFields) ? contact.customFields : []),
+    ...(Array.isArray(contact.contact?.custom_fields) ? contact.contact.custom_fields : []),
+    ...(Array.isArray(contact.contact?.customFields) ? contact.contact.customFields : [])
+  ];
+  if (customFields.length) {
+    const fieldNames = await constantContactCustomFieldNames();
+    for (const field of customFields) {
+      const name = customFieldName(field) || fieldNames.get(customFieldId(field)) || '';
+      const value = customFieldValue(field);
+      if (value && /virtual.*member.*institution|member.*institution|institution|organization|company|employer/i.test(name)) {
+        return value;
+      }
+    }
+  }
+  return directInstitutionValues(contact)[0] || '';
 }
 
 async function refreshConstantContactAccessToken() {
@@ -826,7 +883,7 @@ async function constantContactListContacts({ email = '' } = {}) {
   const params = new URLSearchParams({
     lists: listId,
     status: 'active',
-    include: 'list_memberships',
+    include: 'list_memberships,custom_fields',
     limit: email ? '1' : '500'
   });
   if (email) params.set('email', email);
