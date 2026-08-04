@@ -285,7 +285,14 @@ button.is-loading::after {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 18px;
-  background: #fbfdfe;
+}
+.program-editor {
+  border-color: #cddfe9;
+  background: #f6fbfd;
+}
+.resource-editor {
+  border-color: #eadcc5;
+  background: #fffaf1;
 }
 .editor-title,
 .content-group-head,
