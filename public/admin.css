@@ -570,8 +570,9 @@ button.is-loading::after {
   justify-content: flex-end;
 }
 .segment-settings {
-  margin: 0 28px 22px;
-  padding: 16px;
+  width: min(100% - 56px, 860px);
+  margin: 0 28px 20px;
+  padding: 14px 16px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #f8fbfc;
@@ -584,40 +585,57 @@ button.is-loading::after {
 .segment-settings p {
   color: var(--muted);
   font-size: 13px;
-  margin: 5px 0 0;
+  line-height: 1.4;
+  margin: 4px 0 0;
 }
 .segment-settings form {
   display: grid;
-  grid-template-columns: minmax(220px, 420px) auto;
+  grid-template-columns: minmax(220px, 360px) auto;
   gap: 10px;
   align-items: end;
+  margin-top: 10px;
+}
+.admin-panel .segment-settings label {
+  margin: 0;
+  font-size: 12px;
+}
+.admin-panel .segment-settings input {
+  height: 38px;
+  margin-top: 4px;
+  padding: 8px 10px;
+}
+.admin-panel .segment-settings .outline-button {
+  min-width: 150px;
+  min-height: 38px;
+  padding: 8px 12px;
+}
+.segment-list-block {
   margin-top: 12px;
 }
-.segment-settings label {
-  margin: 0;
+.segment-list-block > strong {
+  display: block;
+  color: var(--navy);
+  font-size: 12px;
+  margin-bottom: 6px;
 }
-.segment-settings .outline-button {
-  min-width: 160px;
-}
-.segment-pill-list {
+.segment-settings .segment-pill-list {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 12px;
 }
-.segment-pill {
+.segment-settings .segment-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 30px;
-  padding: 4px 10px;
+  min-height: 28px;
+  padding: 3px 9px;
   border-radius: 999px;
   background: #e3f3ec;
   color: #146c4d;
   font-size: 12px;
   font-weight: 800;
 }
-.segment-pill button {
+.segment-settings .segment-pill button {
   width: 20px;
   height: 20px;
   border: 0;
@@ -628,13 +646,16 @@ button.is-loading::after {
   line-height: 1;
   cursor: pointer;
 }
-.segment-pill button:hover:not(:disabled) {
+.segment-settings .segment-pill button:hover:not(:disabled) {
   background: #146c4d;
   color: #fff;
 }
-.segment-empty {
+.segment-settings .segment-empty {
   color: var(--muted);
   font-size: 13px;
+}
+.segment-settings .form-status {
+  margin: 8px 0 0;
 }
 .table-wrap {
   overflow: auto;
@@ -753,6 +774,13 @@ td small {
     grid-template-columns: 1fr;
   }
   .workflow-steps li {
+    grid-template-columns: 1fr;
+  }
+  .segment-settings {
+    width: calc(100% - 32px);
+    margin: 0 16px 18px;
+  }
+  .segment-settings form {
     grid-template-columns: 1fr;
   }
   .content-table button {

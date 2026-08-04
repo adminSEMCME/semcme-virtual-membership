@@ -253,8 +253,11 @@
                 <h3>Institution segment checker</h3>
                 <p>
                   Sync members checks Constant Contact segments named
-                  “Virtual Membership - [Institution] Contacts.” Add the exact
-                  institution name shown in that segment name.
+                  “Virtual Membership - [Institution] Contacts.”
+                </p>
+                <p>
+                  To add a new Virtual Institution Type JUST the institution
+                  name below.
                 </p>
               </div>
               <form id="institutionSegmentForm">
@@ -266,7 +269,10 @@
                 >
                 <button class="outline-button" type="submit">Add institution</button>
               </form>
-              <div id="institutionSegmentList" class="segment-pill-list"></div>
+              <div class="segment-list-block">
+                <strong>Currently checked</strong>
+                <div id="institutionSegmentList" class="segment-pill-list"></div>
+              </div>
               <p id="institutionSegmentStatus" class="form-status"></p>
             </div>
             <div class="table-wrap">
