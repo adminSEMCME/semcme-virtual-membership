@@ -849,6 +849,7 @@ function customFieldValue(item) {
 }
 
 let ccCustomFieldNameCache = null;
+let ccVirtualInstitutionResolvedFieldId = '';
 const normalizeFieldKey = value => clean(value, 200).toLowerCase().replace(/[^a-z0-9]+/g, '');
 async function constantContactCustomFieldDefinitions() {
   if (ccCustomFieldNameCache) return ccCustomFieldNameCache;
@@ -883,12 +884,16 @@ function fieldDefinitionText(definition) {
 
 async function virtualInstitutionCustomFieldId() {
   if (ccVirtualInstitutionFieldId) return ccVirtualInstitutionFieldId;
+  if (ccVirtualInstitutionResolvedFieldId) return ccVirtualInstitutionResolvedFieldId;
   const target = normalizeFieldKey(ccVirtualInstitutionFieldName || virtualInstitutionFieldLabel);
   const fallbackTarget = normalizeFieldKey(virtualInstitutionFieldLabel);
   const definitions = await constantContactCustomFieldDefinitions();
   for (const definition of definitions.values()) {
     const labels = [definition.label, definition.name, definition.rawName].map(normalizeFieldKey);
-    if (labels.includes(target) || labels.includes(fallbackTarget)) return definition.id;
+    if (labels.includes(target) || labels.includes(fallbackTarget)) {
+      ccVirtualInstitutionResolvedFieldId = definition.id;
+      return definition.id;
+    }
   }
   return '';
 }
@@ -936,24 +941,13 @@ async function extractInstitution(contact) {
   if (customFields.length) {
     const fieldDefinitions = await constantContactCustomFieldDefinitions();
     const virtualFieldId = await virtualInstitutionCustomFieldId();
-    if (virtualFieldId) {
-      const field = customFields.find((item) => customFieldId(item) === virtualFieldId);
-      const value = field ? resolveCustomFieldValue(field, fieldDefinitions.get(virtualFieldId)) : '';
-      if (value) return value;
-    }
-    for (const field of customFields) {
-      const id = customFieldId(field);
-      const definition = fieldDefinitions.get(id);
-      const name = customFieldName(field) || fieldDefinitionText(definition);
-      const value = resolveCustomFieldValue(field, definition);
-      const fieldMatchesConfiguredId = ccVirtualInstitutionFieldId && id === ccVirtualInstitutionFieldId;
-      const fieldMatchesConfiguredName = normalizeFieldKey(name) === normalizeFieldKey(ccVirtualInstitutionFieldName || virtualInstitutionFieldLabel);
-      if (value && (fieldMatchesConfiguredId || fieldMatchesConfiguredName)) {
-        return value;
-      }
-    }
+    if (!virtualFieldId) throw new Error(`Constant Contact custom field not found: ${virtualInstitutionFieldLabel}`);
+    const field = customFields.find((item) => customFieldId(item) === virtualFieldId);
+    const value = field ? resolveCustomFieldValue(field, fieldDefinitions.get(virtualFieldId)) : '';
+    if (value) return value;
+    throw new Error(`${virtualInstitutionFieldLabel} value was not returned for ${extractEmail(contact) || 'a synced contact'}.`);
   }
-  return '';
+  throw new Error('Constant Contact did not return custom fields for a synced member.');
 }
 
 async function refreshConstantContactAccessToken() {
@@ -1035,13 +1029,9 @@ function contactRecords(data) {
 async function constantContactContactDetail(contact) {
   const contactId = clean(contact?.contact_id || contact?.id || '', 160);
   if (!contactId) return contact;
-  try {
-    const params = new URLSearchParams({ include:'custom_fields,list_memberships' });
-    const detail = await constantContactGet(`${ccBase}/contacts/${encodeURIComponent(contactId)}?${params}`);
-    return { ...contact, ...detail };
-  } catch {
-    return contact;
-  }
+  const params = new URLSearchParams({ include:'custom_fields' });
+  const detail = await constantContactGet(`${ccBase}/contacts/${encodeURIComponent(contactId)}?${params}`);
+  return { ...contact, ...detail };
 }
 
 async function constantContactListMembershipCount(listId, mode) {
