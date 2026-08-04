@@ -832,12 +832,24 @@ function customFieldName(item) {
 }
 
 function customFieldValue(item) {
-  const value = item?.value ?? item?.answer ?? item?.field_value ?? item?.fieldValue ?? item?.text;
-  return typeof value === 'string' ? clean(value, 200) : '';
+  const value = item?.value ?? item?.answer ?? item?.field_value ?? item?.fieldValue ?? item?.text ?? item?.choice_label ?? item?.choice_id;
+  if (typeof value === 'string' || typeof value === 'number') return clean(value, 200);
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => typeof entry === 'string' || typeof entry === 'number'
+        ? clean(entry, 200)
+        : clean(entry?.value || entry?.choice_label || entry?.choice_id || entry?.label || '', 200))
+      .filter(Boolean)
+      .join(', ');
+  }
+  if (value && typeof value === 'object') {
+    return clean(value.value || value.choice_label || value.choice_id || value.label || '', 200);
+  }
+  return '';
 }
 
 let ccCustomFieldNameCache = null;
-async function constantContactCustomFieldNames() {
+async function constantContactCustomFieldDefinitions() {
   if (ccCustomFieldNameCache) return ccCustomFieldNameCache;
   ccCustomFieldNameCache = new Map();
   try {
@@ -848,7 +860,13 @@ async function constantContactCustomFieldNames() {
       for (const field of fields) {
         const id = customFieldId(field);
         const name = customFieldName(field);
-        if (id && name) ccCustomFieldNameCache.set(id, name);
+        const choiceLabels = new Map();
+        for (const choice of field.choices || []) {
+          const choiceId = clean(choice.choice_id || choice.id || choice.value || '', 200);
+          const choiceLabel = clean(choice.choice_label || choice.label || choice.name || '', 200);
+          if (choiceId && choiceLabel) choiceLabels.set(choiceId, choiceLabel);
+        }
+        if (id) ccCustomFieldNameCache.set(id, { id, name, label:clean(field.label || '', 200), rawName:clean(field.name || '', 200), choiceLabels });
       }
       url = constantContactNextUrl(data);
     }
@@ -856,6 +874,24 @@ async function constantContactCustomFieldNames() {
     /* Custom field labels are a best-effort enhancement; contact sync can continue without them. */
   }
   return ccCustomFieldNameCache;
+}
+
+function fieldDefinitionText(definition) {
+  return [definition?.label, definition?.name, definition?.rawName].filter(Boolean).join(' ');
+}
+
+function resolveCustomFieldValue(field, definition) {
+  const rawValue = customFieldValue(field);
+  if (!rawValue) return '';
+  if (!definition?.choiceLabels?.size) return rawValue;
+  return rawValue
+    .split(',')
+    .map((value) => {
+      const trimmed = clean(value, 200);
+      return definition.choiceLabels.get(trimmed) || trimmed;
+    })
+    .filter(Boolean)
+    .join(', ');
 }
 
 function directInstitutionValues(contact) {
@@ -882,11 +918,12 @@ async function extractInstitution(contact) {
     ...(Array.isArray(contact.contact?.customFields) ? contact.contact.customFields : [])
   ];
   if (customFields.length) {
-    const fieldNames = await constantContactCustomFieldNames();
+    const fieldDefinitions = await constantContactCustomFieldDefinitions();
     for (const field of customFields) {
-      const name = customFieldName(field) || fieldNames.get(customFieldId(field)) || '';
-      const value = customFieldValue(field);
       const id = customFieldId(field);
+      const definition = fieldDefinitions.get(id);
+      const name = customFieldName(field) || fieldDefinitionText(definition);
+      const value = resolveCustomFieldValue(field, definition);
       const fieldMatchesConfiguredId = ccVirtualInstitutionFieldId && id === ccVirtualInstitutionFieldId;
       const fieldMatchesConfiguredName = ccVirtualInstitutionFieldName && new RegExp(ccVirtualInstitutionFieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(name);
       if (value && (fieldMatchesConfiguredId || fieldMatchesConfiguredName || /virtual.*member.*institution|member.*institution|institution|organization|company|employer/i.test(name) || (!name && knownInstitutionPattern.test(value)))) {
