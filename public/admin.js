@@ -402,8 +402,12 @@ $("#syncMembers").addEventListener("click", async (e) => {
     const d = await withLoading(button, "Syncing...", () =>
       api("/api/admin/sync-members", { method: "POST" }),
     );
+    const countText =
+      d.listAllCount !== null && d.listAllCount !== undefined
+        ? ` Constant Contact list count: ${d.listAllCount} all${d.listActiveCount !== null && d.listActiveCount !== undefined ? ` / ${d.listActiveCount} active` : ""}.`
+        : "";
     status.textContent = d.configured
-      ? `Synced ${d.synced} members from Constant Contact${d.checked !== undefined ? ` (${d.checked} checked${d.skipped ? `, ${d.skipped} skipped` : ""})` : ""}${d.listName || d.listId ? ` from ${[d.listName, d.listId].filter(Boolean).join(" / ")}` : ""}${d.databaseType ? ` using ${d.databaseType === "postgres" ? "Postgres" : "SQLite"}.` : "."}`
+      ? `Synced ${d.synced} members from Constant Contact${d.checked !== undefined ? ` (${d.checked} returned by contacts API${d.skipped ? `, ${d.skipped} skipped` : ""})` : ""}${d.listName || d.listId ? ` from ${[d.listName, d.listId].filter(Boolean).join(" / ")}` : ""}${d.databaseType ? ` using ${d.databaseType === "postgres" ? "Postgres" : "SQLite"}.` : "."}${countText}`
       : "Constant Contact Virtual Members list lookup is not configured yet.";
     status.classList.add("success");
     await load();

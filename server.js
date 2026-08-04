@@ -48,6 +48,8 @@ const ccClientSecret = process.env.CONSTANT_CONTACT_CLIENT_SECRET || '';
 const ccRefreshToken = process.env.CONSTANT_CONTACT_REFRESH_TOKEN || '';
 const ccVirtualMembersListId = process.env.CONSTANT_CONTACT_VIRTUAL_MEMBERSHIP_LIST_ID || '';
 const ccVirtualMembersListName = process.env.CONSTANT_CONTACT_VIRTUAL_MEMBERSHIP_LIST_NAME || 'SEMCME - Virtual Members';
+const ccVirtualInstitutionFieldId = process.env.CONSTANT_CONTACT_VIRTUAL_INSTITUTION_FIELD_ID || '';
+const ccVirtualInstitutionFieldName = process.env.CONSTANT_CONTACT_VIRTUAL_INSTITUTION_FIELD_NAME || 'Virtual Member Institution';
 const registrationUrl = process.env.VIRTUAL_MEMBERSHIP_REGISTRATION_URL || 'https://lp.constantcontactpages.com/sl/8vmbMa9';
 const constantContactConfigured = Boolean((ccAccessToken || (ccClientId && ccClientSecret && ccRefreshToken)) && (ccVirtualMembersListId || ccVirtualMembersListName));
 const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
@@ -799,7 +801,10 @@ async function extractInstitution(contact) {
     for (const field of customFields) {
       const name = customFieldName(field) || fieldNames.get(customFieldId(field)) || '';
       const value = customFieldValue(field);
-      if (value && /virtual.*member.*institution|member.*institution|institution|organization|company|employer/i.test(name)) {
+      const id = customFieldId(field);
+      const fieldMatchesConfiguredId = ccVirtualInstitutionFieldId && id === ccVirtualInstitutionFieldId;
+      const fieldMatchesConfiguredName = ccVirtualInstitutionFieldName && new RegExp(ccVirtualInstitutionFieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(name);
+      if (value && (fieldMatchesConfiguredId || fieldMatchesConfiguredName || /virtual.*member.*institution|member.*institution|institution|organization|company|employer/i.test(name))) {
         return value;
       }
     }
@@ -877,12 +882,31 @@ function contactRecords(data) {
   return data.contacts || data.records || [];
 }
 
+async function constantContactListMembershipCount(listId, mode) {
+  try {
+    const data = await constantContactGet(`${ccBase}/contact_lists/${encodeURIComponent(listId)}?include_membership_count=${mode}`);
+    return Number.isFinite(Number(data.membership_count)) ? Number(data.membership_count) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function constantContactListSummary(listId) {
+  const [allCount, activeCount] = await Promise.all([
+    constantContactListMembershipCount(listId, 'all'),
+    constantContactListMembershipCount(listId, 'active')
+  ]);
+  return { allCount, activeCount };
+}
+
 async function constantContactListContacts({ email = '' } = {}) {
   if (!constantContactConfigured) return { configured:false, records:[] };
   const listId = await virtualMembersListId();
   const params = new URLSearchParams({
     lists: listId,
+    status: 'all',
     include: 'list_memberships,custom_fields',
+    include_count: 'true',
     limit: email ? '1' : '500'
   });
   if (email) params.set('email', email);
@@ -907,13 +931,14 @@ async function findConstantContactListMember(email) {
 async function syncConstantContactMembers() {
   const result = await constantContactListContacts();
   if (!result.configured) return { configured:false, synced:0, databaseType:db.type };
+  const listSummary = await constantContactListSummary(result.listId);
   let synced = 0;
   let skipped = 0;
   for (const record of result.records) {
     if (await upsertMemberFromContact(record)) synced += 1;
     else skipped += 1;
   }
-  return { configured:true, synced, checked:result.records.length, skipped, databaseType:db.type, listId:result.listId, listName:result.listName };
+  return { configured:true, synced, checked:result.records.length, skipped, databaseType:db.type, listId:result.listId, listName:result.listName, listAllCount:listSummary.allCount, listActiveCount:listSummary.activeCount };
 }
 
 async function createMagicLink(memberRow) {
