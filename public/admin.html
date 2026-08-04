@@ -88,18 +88,20 @@
                 <span>Click an existing item to edit it, or create a new one.</span>
               </li>
             </ol>
-            <div class="posted-list-head">
-              <span class="step-badge">Step 1</span>
-              <div>
-                <h3>Review posted items</h3>
-                <p>
-                  This list updates when an item or program is saved. Click an
-                  item already in the list to prefill the inputs below with its
-                  current details for updating.
-                </p>
+            <div class="posted-items-shell">
+              <div class="posted-list-head">
+                <span class="step-badge">Step 1</span>
+                <div>
+                  <h3>Review posted items</h3>
+                  <p>
+                    This list updates when an item or program is saved. Click
+                    an item already in the list to prefill the inputs below
+                    with its current details for updating.
+                  </p>
+                </div>
               </div>
+              <div id="contentRows" class="content-rows"></div>
             </div>
-            <div id="contentRows" class="content-rows"></div>
             <div class="content-tools">
               <div class="program-editor">
                 <div class="editor-title">
@@ -113,7 +115,7 @@
                   Program areas are the categories in the member sidebar. Most
                   updates only require choosing an existing program here.
                 </p>
-                <label
+                <label class="primary-choice"
                   >Select program<select id="programEditorSelect"></select
                 ></label>
                 <form id="programForm" class="field-grid">
@@ -157,7 +159,7 @@
                 </p>
                 <form id="resourceForm" class="field-grid">
                   <input name="id" type="hidden" />
-                  <label
+                  <label class="primary-choice"
                     >Section<select name="section" required>
                       <option value="upcoming">Upcoming programs</option>
                       <option value="current">Current & previous academic year</option>

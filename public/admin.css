@@ -365,6 +365,26 @@ button.is-loading::after {
   margin-top: 4px;
   font-weight: 500;
 }
+.admin-panel label.primary-choice {
+  border: 1px solid #b9d4ea;
+  border-left: 5px solid var(--blue);
+  border-radius: 10px;
+  background: #f5fafc;
+  color: var(--navy);
+  padding: 12px 14px 14px;
+  margin-top: 14px;
+  font-size: 14px;
+}
+.admin-panel label.primary-choice select {
+  border-color: var(--blue);
+  background-color: #fff;
+  box-shadow: 0 0 0 3px rgba(19, 84, 152, 0.08);
+  font-weight: 800;
+}
+.admin-panel label.primary-choice small {
+  color: #466271;
+  font-weight: 700;
+}
 .admin-panel input[readonly] {
   background: #f1f5f7;
   color: #5f707a;
@@ -398,6 +418,14 @@ button.is-loading::after {
 .form-actions button {
   flex: 0 0 170px;
 }
+.posted-items-shell {
+  max-width: 1180px;
+  margin: 16px auto 0;
+  padding: 14px;
+  border: 1px solid #d6e2e8;
+  border-radius: 12px;
+  background: #f8fbfc;
+}
 .content-rows {
   display: grid;
   gap: 12px;
@@ -410,7 +438,7 @@ button.is-loading::after {
   border: 1px solid var(--line);
   border-radius: 10px 10px 0 0;
   background: #eef3f4;
-  margin-top: 16px;
+  margin-top: 0;
   padding: 14px 16px;
 }
 .posted-list-head p {
