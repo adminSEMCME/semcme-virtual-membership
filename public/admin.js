@@ -402,7 +402,7 @@ $("#syncMembers").addEventListener("click", async (e) => {
       api("/api/admin/sync-members", { method: "POST" }),
     );
     status.textContent = d.configured
-      ? `Synced ${d.synced} members from Constant Contact.`
+      ? `Synced ${d.synced} members from Constant Contact${d.missingInstitutions ? `; ${d.missingInstitutions} missing institution ${d.missingInstitutions === 1 ? "value" : "values"} in Constant Contact.` : "."}`
       : "Constant Contact Virtual Members list lookup is not configured yet.";
     status.classList.add("success");
     await load();

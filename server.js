@@ -945,9 +945,9 @@ async function extractInstitution(contact) {
     const field = customFields.find((item) => customFieldId(item) === virtualFieldId);
     const value = field ? resolveCustomFieldValue(field, fieldDefinitions.get(virtualFieldId)) : '';
     if (value) return value;
-    throw new Error(`${virtualInstitutionFieldLabel} value was not returned for ${extractEmail(contact) || 'a synced contact'}.`);
+    return '';
   }
-  throw new Error('Constant Contact did not return custom fields for a synced member.');
+  return '';
 }
 
 async function refreshConstantContactAccessToken() {
@@ -1086,12 +1086,18 @@ async function syncConstantContactMembers() {
   const listSummary = await constantContactListSummary(result.listId);
   let synced = 0;
   let skipped = 0;
+  let missingInstitutions = 0;
   for (const record of result.records) {
     const detail = await constantContactContactDetail(record);
-    if (await upsertMemberFromContact(detail)) synced += 1;
-    else skipped += 1;
+    const member = await upsertMemberFromContact(detail);
+    if (member) {
+      synced += 1;
+      if (!member.institution) missingInstitutions += 1;
+    } else {
+      skipped += 1;
+    }
   }
-  return { configured:true, synced, checked:result.records.length, skipped, databaseType:db.type, listId:result.listId, listName:result.listName, listAllCount:listSummary.allCount, listActiveCount:listSummary.activeCount };
+  return { configured:true, synced, checked:result.records.length, skipped, missingInstitutions, databaseType:db.type, listId:result.listId, listName:result.listName, listAllCount:listSummary.allCount, listActiveCount:listSummary.activeCount };
 }
 
 async function createMagicLink(memberRow) {
