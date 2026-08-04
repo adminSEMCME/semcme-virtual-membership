@@ -50,6 +50,7 @@ const ccVirtualMembersListId = process.env.CONSTANT_CONTACT_VIRTUAL_MEMBERSHIP_L
 const ccVirtualMembersListName = process.env.CONSTANT_CONTACT_VIRTUAL_MEMBERSHIP_LIST_NAME || 'SEMCME - Virtual Members';
 const ccVirtualInstitutionFieldId = process.env.CONSTANT_CONTACT_VIRTUAL_INSTITUTION_FIELD_ID || '';
 const ccVirtualInstitutionFieldName = process.env.CONSTANT_CONTACT_VIRTUAL_INSTITUTION_FIELD_NAME || 'Virtual Member Institution';
+const ccRedirectUri = process.env.CONSTANT_CONTACT_REDIRECT_URI || `${productionBaseUrl}/api/admin/constant-contact/callback`;
 const registrationUrl = process.env.VIRTUAL_MEMBERSHIP_REGISTRATION_URL || 'https://lp.constantcontactpages.com/sl/8vmbMa9';
 const constantContactConfigured = Boolean((ccAccessToken || (ccClientId && ccClientSecret && ccRefreshToken)) && (ccVirtualMembersListId || ccVirtualMembersListName));
 const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
@@ -374,6 +375,45 @@ async function saveStoredConstantContactTokens() {
     accessToken: ccTokenState.accessToken,
     refreshToken: ccTokenState.refreshToken
   });
+}
+
+function constantContactAuthorizationUrl(state) {
+  const params = new URLSearchParams({
+    client_id: ccClientId,
+    response_type: 'code',
+    redirect_uri: ccRedirectUri,
+    scope: 'account_read contact_data offline_access',
+    state
+  });
+  return `https://authz.constantcontact.com/oauth2/default/v1/authorize?${params}`;
+}
+
+async function exchangeConstantContactAuthorizationCode(code) {
+  if (!ccClientId || !ccClientSecret) throw new Error('Constant Contact client credentials are not configured.');
+  const credentials = Buffer.from(`${ccClientId}:${ccClientSecret}`).toString('base64');
+  const response = await fetch('https://authz.constantcontact.com/oauth2/default/v1/token', {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'application/json'
+    },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: ccRedirectUri
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const detail = data.error_description || data.error || '';
+    throw new Error(`Constant Contact authorization failed ${response.status}${detail ? `: ${detail}` : ''}`);
+  }
+  ccTokenState.accessToken = data.access_token || '';
+  ccTokenState.refreshToken = data.refresh_token || ccTokenState.refreshToken;
+  ccTokenState.expiresAt = Date.now() + Math.max(Number(data.expires_in || 0) - 300, 60) * 1000;
+  await saveStoredConstantContactTokens();
+  return data;
 }
 
 function resourceShouldEmbed(resource) {
@@ -1167,6 +1207,39 @@ async function api(req, res, path) {
     return json(res,200,{ok:true},{'Set-Cookie':cookie('semcme_admin',sign('admin'),1)});
   }
   if (path === '/api/admin/logout' && req.method === 'POST') return json(res,200,{ok:true},{'Set-Cookie':clearCookie('semcme_admin')});
+  if (path === '/api/admin/constant-contact/connect' && req.method === 'GET') {
+    if (!admin(req)) {
+      res.writeHead(302, { Location:'/admin.html' });
+      return res.end();
+    }
+    if (!ccClientId || !ccClientSecret) return json(res,500,{error:'Constant Contact client credentials are not configured.'});
+    const state = randomBytes(16).toString('hex');
+    res.writeHead(302, {
+      Location:constantContactAuthorizationUrl(state),
+      'Set-Cookie':cookie('semcme_cc_oauth_state', sign(state), 1 / 144)
+    });
+    return res.end();
+  }
+  if (path === '/api/admin/constant-contact/callback' && req.method === 'GET') {
+    const url = new URL(req.url, 'http://localhost');
+    const returnedState = clean(url.searchParams.get('state') || '', 200);
+    const code = clean(url.searchParams.get('code') || '', 1000);
+    const expectedState = unsign(cookies(req).semcme_cc_oauth_state);
+    const headers = { 'Set-Cookie':clearCookie('semcme_cc_oauth_state') };
+    if (!expectedState || returnedState !== expectedState || !code) {
+      res.writeHead(302, { ...headers, Location:'/admin.html?cc=failed' });
+      return res.end();
+    }
+    try {
+      await exchangeConstantContactAuthorizationCode(code);
+      res.writeHead(302, { ...headers, Location:'/admin.html?cc=connected' });
+      return res.end();
+    } catch(e) {
+      console.error(e.message);
+      res.writeHead(302, { ...headers, Location:'/admin.html?cc=failed' });
+      return res.end();
+    }
+  }
   if (path === '/api/admin/dashboard' && req.method === 'GET') {
     if (!admin(req)) return json(res,401,{error:'Admin login required.'});
     let heroEvents = [];

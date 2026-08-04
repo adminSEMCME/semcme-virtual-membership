@@ -2,7 +2,8 @@
   background: #eef3f4;
 }
 .admin-body button,
-.admin-body [role="button"] {
+.admin-body [role="button"],
+.admin-body .outline-button {
   cursor: pointer;
 }
 .admin-body .utility-bar {
@@ -118,6 +119,9 @@
   justify-content: flex-end;
 }
 .outline-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--blue);
   background: #fff;
   color: var(--blue);
@@ -126,6 +130,7 @@
   min-width: 150px;
   min-height: 42px;
   padding: 9px 16px;
+  text-decoration: none;
   transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 .outline-button:hover:not(:disabled) {
@@ -557,6 +562,12 @@ button.is-loading::after {
 .table-panel-head .form-status {
   margin: 8px 0 0;
   max-width: 900px;
+}
+.member-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .table-wrap {
   overflow: auto;
