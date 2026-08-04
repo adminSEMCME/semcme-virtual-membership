@@ -210,10 +210,7 @@ async function load() {
     const resourceCount = (d.libraryPrograms || []).reduce((sum, program) => sum + flattenResources(program).length, 0);
     $("#stats").innerHTML =
       `<div class="stat"><strong>${(d.libraryPrograms || []).length}</strong><span>program areas</span></div><div class="stat"><strong>${resourceCount}</strong><span>library items</span></div><div class="stat"><strong>${(d.members || []).length}</strong><span>members in database</span></div><div class="stat"><strong>${(d.support || []).filter((x) => x.status === "new").length}</strong><span>new questions</span></div>`;
-    if (pageParams.get("cc") === "connected") {
-      $("#memberSyncStatus").textContent = "Constant Contact reconnected successfully.";
-      $("#memberSyncStatus").classList.add("success");
-    } else if (pageParams.get("cc") === "failed") {
+    if (pageParams.get("cc") === "failed") {
       $("#memberSyncStatus").textContent = "Constant Contact reconnect failed. Check that the callback URL is saved in the Constant Contact app.";
       $("#memberSyncStatus").classList.remove("success");
     }

@@ -60,6 +60,7 @@ const ccTokenState = {
   refreshToken: ccRefreshToken,
   expiresAt: 0
 };
+const knownInstitutionPattern = /SEMCME|Corewell|Henry Ford|McLaren|Trinity|Wayne State|Detroit Medical|Garden City|Ascension|CMU|Michigan State|Oakland|University of Michigan|Munson|ProMedica/i;
 
 function cleanBaseUrl(value) {
   const url = String(value || '').trim().replace(/\/+$/, '');
@@ -888,7 +889,7 @@ async function extractInstitution(contact) {
       const id = customFieldId(field);
       const fieldMatchesConfiguredId = ccVirtualInstitutionFieldId && id === ccVirtualInstitutionFieldId;
       const fieldMatchesConfiguredName = ccVirtualInstitutionFieldName && new RegExp(ccVirtualInstitutionFieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(name);
-      if (value && (fieldMatchesConfiguredId || fieldMatchesConfiguredName || /virtual.*member.*institution|member.*institution|institution|organization|company|employer/i.test(name))) {
+      if (value && (fieldMatchesConfiguredId || fieldMatchesConfiguredName || /virtual.*member.*institution|member.*institution|institution|organization|company|employer/i.test(name) || (!name && knownInstitutionPattern.test(value)))) {
         return value;
       }
     }
@@ -972,6 +973,18 @@ function contactRecords(data) {
   return data.contacts || data.records || [];
 }
 
+async function constantContactContactDetail(contact) {
+  const contactId = clean(contact?.contact_id || contact?.id || '', 160);
+  if (!contactId) return contact;
+  try {
+    const params = new URLSearchParams({ include:'custom_fields,list_memberships' });
+    const detail = await constantContactGet(`${ccBase}/contacts/${encodeURIComponent(contactId)}?${params}`);
+    return { ...contact, ...detail };
+  } catch {
+    return contact;
+  }
+}
+
 async function constantContactListMembershipCount(listId, mode) {
   try {
     const data = await constantContactGet(`${ccBase}/contact_lists/${encodeURIComponent(listId)}?include_membership_count=${mode}`);
@@ -1015,7 +1028,7 @@ async function findConstantContactListMember(email) {
   const result = await constantContactListContacts({ email });
   if (!result.configured) return { configured:false, member:null };
   const match = result.records.find(r => extractEmail(r) === email);
-  return { configured:true, member: match ? await upsertMemberFromContact(match) : null };
+  return { configured:true, member: match ? await upsertMemberFromContact(await constantContactContactDetail(match)) : null };
 }
 
 async function syncConstantContactMembers() {
@@ -1025,7 +1038,8 @@ async function syncConstantContactMembers() {
   let synced = 0;
   let skipped = 0;
   for (const record of result.records) {
-    if (await upsertMemberFromContact(record)) synced += 1;
+    const detail = await constantContactContactDetail(record);
+    if (await upsertMemberFromContact(detail)) synced += 1;
     else skipped += 1;
   }
   return { configured:true, synced, checked:result.records.length, skipped, databaseType:db.type, listId:result.listId, listName:result.listName, listAllCount:listSummary.allCount, listActiveCount:listSummary.activeCount };
