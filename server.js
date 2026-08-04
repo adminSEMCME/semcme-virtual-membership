@@ -60,7 +60,7 @@ const ccTokenState = {
   refreshToken: ccRefreshToken,
   expiresAt: 0
 };
-const knownInstitutionPattern = /SEMCME|Corewell|Henry Ford|McLaren|Trinity|Wayne State|Detroit Medical|Garden City|Ascension|CMU|Michigan State|Oakland|University of Michigan|Munson|ProMedica/i;
+const virtualInstitutionFieldLabel = 'SEMCME Virtual Member Institution';
 
 function cleanBaseUrl(value) {
   const url = String(value || '').trim().replace(/\/+$/, '');
@@ -828,11 +828,11 @@ function customFieldId(item) {
 }
 
 function customFieldName(item) {
-  return clean(item?.name || item?.label || item?.custom_field_name || item?.customFieldName || item?.field_name || item?.fieldName || '', 200);
+  return clean(item?.label || item?.name || item?.custom_field_label || item?.customFieldLabel || item?.custom_field_name || item?.customFieldName || item?.field_name || item?.fieldName || '', 200);
 }
 
 function customFieldValue(item) {
-  const value = item?.value ?? item?.answer ?? item?.field_value ?? item?.fieldValue ?? item?.text ?? item?.choice_label ?? item?.choice_id;
+  const value = item?.value ?? item?.custom_field_value ?? item?.customFieldValue ?? item?.answer ?? item?.field_value ?? item?.fieldValue ?? item?.text ?? item?.choice_label ?? item?.choice_id;
   if (typeof value === 'string' || typeof value === 'number') return clean(value, 200);
   if (Array.isArray(value)) {
     return value
@@ -849,6 +849,7 @@ function customFieldValue(item) {
 }
 
 let ccCustomFieldNameCache = null;
+const normalizeFieldKey = value => clean(value, 200).toLowerCase().replace(/[^a-z0-9]+/g, '');
 async function constantContactCustomFieldDefinitions() {
   if (ccCustomFieldNameCache) return ccCustomFieldNameCache;
   ccCustomFieldNameCache = new Map();
@@ -861,9 +862,9 @@ async function constantContactCustomFieldDefinitions() {
         const id = customFieldId(field);
         const name = customFieldName(field);
         const choiceLabels = new Map();
-        for (const choice of field.choices || []) {
-          const choiceId = clean(choice.choice_id || choice.id || choice.value || '', 200);
-          const choiceLabel = clean(choice.choice_label || choice.label || choice.name || '', 200);
+        for (const choice of field.choices || field.options || field.values || []) {
+          const choiceId = clean(choice.choice_id || choice.id || choice.value || choice.option_id || '', 200);
+          const choiceLabel = clean(choice.choice_label || choice.label || choice.name || choice.option_label || '', 200);
           if (choiceId && choiceLabel) choiceLabels.set(choiceId, choiceLabel);
         }
         if (id) ccCustomFieldNameCache.set(id, { id, name, label:clean(field.label || '', 200), rawName:clean(field.name || '', 200), choiceLabels });
@@ -878,6 +879,18 @@ async function constantContactCustomFieldDefinitions() {
 
 function fieldDefinitionText(definition) {
   return [definition?.label, definition?.name, definition?.rawName].filter(Boolean).join(' ');
+}
+
+async function virtualInstitutionCustomFieldId() {
+  if (ccVirtualInstitutionFieldId) return ccVirtualInstitutionFieldId;
+  const target = normalizeFieldKey(ccVirtualInstitutionFieldName || virtualInstitutionFieldLabel);
+  const fallbackTarget = normalizeFieldKey(virtualInstitutionFieldLabel);
+  const definitions = await constantContactCustomFieldDefinitions();
+  for (const definition of definitions.values()) {
+    const labels = [definition.label, definition.name, definition.rawName].map(normalizeFieldKey);
+    if (labels.includes(target) || labels.includes(fallbackTarget)) return definition.id;
+  }
+  return '';
 }
 
 function resolveCustomFieldValue(field, definition) {
@@ -914,24 +927,33 @@ async function extractInstitution(contact) {
   const customFields = [
     ...(Array.isArray(contact.custom_fields) ? contact.custom_fields : []),
     ...(Array.isArray(contact.customFields) ? contact.customFields : []),
+    ...(Array.isArray(contact.contact_custom_fields) ? contact.contact_custom_fields : []),
+    ...(Array.isArray(contact.contactCustomFields) ? contact.contactCustomFields : []),
     ...(Array.isArray(contact.contact?.custom_fields) ? contact.contact.custom_fields : []),
-    ...(Array.isArray(contact.contact?.customFields) ? contact.contact.customFields : [])
+    ...(Array.isArray(contact.contact?.customFields) ? contact.contact.customFields : []),
+    ...(Array.isArray(contact.contact?.contact_custom_fields) ? contact.contact.contact_custom_fields : [])
   ];
   if (customFields.length) {
     const fieldDefinitions = await constantContactCustomFieldDefinitions();
+    const virtualFieldId = await virtualInstitutionCustomFieldId();
+    if (virtualFieldId) {
+      const field = customFields.find((item) => customFieldId(item) === virtualFieldId);
+      const value = field ? resolveCustomFieldValue(field, fieldDefinitions.get(virtualFieldId)) : '';
+      if (value) return value;
+    }
     for (const field of customFields) {
       const id = customFieldId(field);
       const definition = fieldDefinitions.get(id);
       const name = customFieldName(field) || fieldDefinitionText(definition);
       const value = resolveCustomFieldValue(field, definition);
       const fieldMatchesConfiguredId = ccVirtualInstitutionFieldId && id === ccVirtualInstitutionFieldId;
-      const fieldMatchesConfiguredName = ccVirtualInstitutionFieldName && new RegExp(ccVirtualInstitutionFieldName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i').test(name);
-      if (value && (fieldMatchesConfiguredId || fieldMatchesConfiguredName || /virtual.*member.*institution|member.*institution|institution|organization|company|employer/i.test(name) || (!name && knownInstitutionPattern.test(value)))) {
+      const fieldMatchesConfiguredName = normalizeFieldKey(name) === normalizeFieldKey(ccVirtualInstitutionFieldName || virtualInstitutionFieldLabel);
+      if (value && (fieldMatchesConfiguredId || fieldMatchesConfiguredName)) {
         return value;
       }
     }
   }
-  return directInstitutionValues(contact)[0] || '';
+  return '';
 }
 
 async function refreshConstantContactAccessToken() {
