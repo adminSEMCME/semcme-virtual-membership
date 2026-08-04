@@ -61,6 +61,10 @@ const ccTokenState = {
   expiresAt: 0
 };
 const virtualInstitutionFieldLabel = 'SEMCME Virtual Member Institution';
+const defaultVirtualInstitutionSegments = [
+  'SEMCME',
+  'NON-SEMCME'
+];
 
 function cleanBaseUrl(value) {
   const url = String(value || '').trim().replace(/\/+$/, '');
@@ -71,6 +75,8 @@ function cleanBaseUrl(value) {
     return '';
   }
 }
+
+const delay = ms => new Promise((resolve) => setTimeout(resolve, ms));
 
 function isVercelAppUrl(value) {
   try {
@@ -359,6 +365,49 @@ async function setSettingJson(key, value) {
     VALUES ($1, $2)
     ON CONFLICT(key) DO UPDATE SET value=excluded.value
   `, [key, JSON.stringify(value)]);
+}
+
+function uniqueCleanList(values) {
+  const seen = new Set();
+  return values
+    .map((value) => clean(value, 120))
+    .filter(Boolean)
+    .filter((value) => {
+      const key = value.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+async function getVirtualInstitutionSegmentNames() {
+  const saved = await getSettingJson('virtual_institution_segment_names', []);
+  return uniqueCleanList([...defaultVirtualInstitutionSegments, ...(Array.isArray(saved) ? saved : [])]);
+}
+
+async function saveVirtualInstitutionSegmentNames(values) {
+  const names = uniqueCleanList(values);
+  const defaults = new Set(defaultVirtualInstitutionSegments.map((value) => value.toLowerCase()));
+  const custom = names.filter((name) => !defaults.has(name.toLowerCase()));
+  await setSettingJson('virtual_institution_segment_names', custom);
+  return uniqueCleanList([...defaultVirtualInstitutionSegments, ...custom]);
+}
+
+async function addVirtualInstitutionSegmentName(value) {
+  const name = clean(value, 120);
+  if (!name) throw Object.assign(new Error('Enter an institution name.'), { status:400 });
+  const names = await getVirtualInstitutionSegmentNames();
+  return saveVirtualInstitutionSegmentNames([...names, name]);
+}
+
+async function removeVirtualInstitutionSegmentName(value) {
+  const name = clean(value, 120);
+  const defaults = new Set(defaultVirtualInstitutionSegments.map((item) => item.toLowerCase()));
+  if (defaults.has(name.toLowerCase())) {
+    throw Object.assign(new Error('Default institution segments cannot be removed.'), { status:400 });
+  }
+  const names = await getVirtualInstitutionSegmentNames();
+  return saveVirtualInstitutionSegmentNames(names.filter((item) => item.toLowerCase() !== name.toLowerCase()));
 }
 
 let loadedStoredConstantContactTokens = false;
@@ -941,7 +990,7 @@ async function extractInstitution(contact) {
   if (customFields.length) {
     const fieldDefinitions = await constantContactCustomFieldDefinitions();
     const virtualFieldId = await virtualInstitutionCustomFieldId();
-    if (!virtualFieldId) throw new Error(`Constant Contact custom field not found: ${virtualInstitutionFieldLabel}`);
+    if (!virtualFieldId) return '';
     const field = customFields.find((item) => customFieldId(item) === virtualFieldId);
     const value = field ? resolveCustomFieldValue(field, fieldDefinitions.get(virtualFieldId)) : '';
     if (value) return value;
@@ -988,16 +1037,22 @@ async function constantContactAccessToken() {
   return refreshConstantContactAccessToken();
 }
 
-async function constantContactGet(url, retry = true) {
+async function constantContactGetResponse(url, retry = true) {
   const token = await constantContactAccessToken();
   const r = await fetch(url, { headers:{ Authorization:`Bearer ${token}` } });
   if (r.status === 401 && retry && ccClientId && ccClientSecret && ccTokenState.refreshToken) {
     ccTokenState.accessToken = '';
     await refreshConstantContactAccessToken();
-    return constantContactGet(url, false);
+    return constantContactGetResponse(url, false);
   }
+  const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(`Constant Contact returned ${r.status}`);
-  return r.json();
+  return { status:r.status, data };
+}
+
+async function constantContactGet(url, retry = true) {
+  const response = await constantContactGetResponse(url, retry);
+  return response.data;
 }
 
 function constantContactNextUrl(data) {
@@ -1024,6 +1079,96 @@ async function virtualMembersListId() {
 
 function contactRecords(data) {
   return data.contacts || data.records || [];
+}
+
+function normalizeInstitutionKey(value) {
+  return clean(value, 240).toLowerCase().replace(/[–—]/g, '-').replace(/[^a-z0-9]+/g, '');
+}
+
+function institutionFromSegmentName(name, institutionNames) {
+  const segmentLabel = clean(name, 240);
+  const conventionMatch = segmentLabel.match(/^Virtual\s+Membership\s*[-–—:]\s*(.*?)\s+Contacts?$/i);
+  const conventionValue = clean(conventionMatch?.[1] || '', 120);
+  if (conventionValue) {
+    return institutionNames.find((institution) => normalizeInstitutionKey(institution) === normalizeInstitutionKey(conventionValue)) || '';
+  }
+
+  const segmentKey = normalizeInstitutionKey(name);
+  if (!segmentKey) return '';
+  const directMatch = [...institutionNames]
+    .sort((a, b) => b.length - a.length)
+    .find((institution) => segmentKey.includes(normalizeInstitutionKey(institution)));
+  if (directMatch) return directMatch;
+
+  const stripped = clean(name, 240)
+    .replace(/\b(virtual|member|members|institution|institutions|segment|contacts?|all)\b/gi, ' ')
+    .replace(/\s*[-–—:|]\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (normalizeInstitutionKey(stripped) === 'semcme') return 'SEMCME';
+  if (!stripped || normalizeInstitutionKey(stripped) === segmentKey) return '';
+
+  return institutionNames.find((institution) => normalizeInstitutionKey(stripped) === normalizeInstitutionKey(institution)) || '';
+}
+
+async function constantContactSegments() {
+  const segments = [];
+  let url = `${ccBase}/segments?limit=1000&sort_by=name`;
+  for (let page = 0; page < 10 && url; page += 1) {
+    const data = await constantContactGet(url);
+    segments.push(...(data.segments || data.records || []));
+    url = constantContactNextUrl(data);
+  }
+  return segments;
+}
+
+async function constantContactSegmentContacts(segmentId) {
+  const records = [];
+  let url = `${ccBase}/contacts?segment_id=${encodeURIComponent(segmentId)}&limit=500`;
+  for (let page = 0; page < 20 && url; page += 1) {
+    let response = await constantContactGetResponse(url);
+    for (let attempt = 0; response.status === 202 && attempt < 5; attempt += 1) {
+      await delay(750);
+      response = await constantContactGetResponse(url);
+    }
+    records.push(...contactRecords(response.data));
+    url = constantContactNextUrl(response.data);
+  }
+  return records;
+}
+
+async function syncMemberInstitutionsFromSegments() {
+  const segments = await constantContactSegments();
+  const institutionNames = await getVirtualInstitutionSegmentNames();
+  let matchedSegments = 0;
+  let checkedContacts = 0;
+  let updated = 0;
+  const seen = new Set();
+
+  for (const segment of segments) {
+    const segmentId = clean(segment.segment_id || segment.id || '', 160);
+    const institution = institutionFromSegmentName(segment.name || segment.segment_name || '', institutionNames);
+    if (!segmentId || !institution) continue;
+    matchedSegments += 1;
+
+    const contacts = await constantContactSegmentContacts(segmentId);
+    for (const contact of contacts) {
+      const email = extractEmail(contact);
+      if (!email || seen.has(email)) continue;
+      seen.add(email);
+      checkedContacts += 1;
+      const existing = await db.get('SELECT institution FROM members WHERE lower(email)=lower($1)', [email]);
+      if (!existing) continue;
+      if (clean(existing.institution || '', 200) === institution) continue;
+      await db.run(
+        'UPDATE members SET institution=$1, updated_at=CURRENT_TIMESTAMP WHERE lower(email)=lower($2)',
+        [institution, email]
+      );
+      updated += 1;
+    }
+  }
+
+  return { institutionSynced:updated, institutionSegments:matchedSegments, institutionContactsChecked:checkedContacts };
 }
 
 async function constantContactContactDetail(contact) {
@@ -1097,7 +1242,8 @@ async function syncConstantContactMembers() {
       skipped += 1;
     }
   }
-  return { configured:true, synced, checked:result.records.length, skipped, missingInstitutions, databaseType:db.type, listId:result.listId, listName:result.listName, listAllCount:listSummary.allCount, listActiveCount:listSummary.activeCount };
+  const institutionResult = await syncMemberInstitutionsFromSegments();
+  return { configured:true, synced, checked:result.records.length, skipped, missingInstitutions, ...institutionResult, databaseType:db.type, listId:result.listId, listName:result.listName, listAllCount:listSummary.allCount, listActiveCount:listSummary.activeCount };
 }
 
 async function createMagicLink(memberRow) {
@@ -1320,10 +1466,29 @@ async function api(req, res, path) {
       constantContactListId:ccVirtualMembersListId || resolvedVirtualMembersListId || '',
       constantContactListName:ccVirtualMembersListName,
       registrationUrl,
+      virtualInstitutionSegments:await getVirtualInstitutionSegmentNames(),
       libraryPrograms:await getLibraryPrograms({ includeDisabled:true }),
       members:await db.all('SELECT * FROM members ORDER BY created_at DESC LIMIT 500'),
       support:await db.all('SELECT * FROM support_requests ORDER BY created_at DESC LIMIT 250')
     });
+  }
+  if (path === '/api/admin/institution-segments' && req.method === 'POST') {
+    if (!admin(req)) return json(res,401,{error:'Admin login required.'});
+    try {
+      const body = await readBody(req);
+      return json(res,200,{ok:true, virtualInstitutionSegments:await addVirtualInstitutionSegmentName(body.name)});
+    } catch(e) {
+      return json(res,e.status || 500,{error:e.message || 'Unable to save that institution.'});
+    }
+  }
+  if (path === '/api/admin/institution-segments' && req.method === 'DELETE') {
+    if (!admin(req)) return json(res,401,{error:'Admin login required.'});
+    try {
+      const name = new URL(req.url, 'http://localhost').searchParams.get('name');
+      return json(res,200,{ok:true, virtualInstitutionSegments:await removeVirtualInstitutionSegmentName(name)});
+    } catch(e) {
+      return json(res,e.status || 500,{error:e.message || 'Unable to remove that institution.'});
+    }
   }
   if (path === '/api/admin/library/program' && req.method === 'POST') {
     if (!admin(req)) return json(res,401,{error:'Admin login required.'});

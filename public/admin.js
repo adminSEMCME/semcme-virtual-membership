@@ -118,6 +118,20 @@ function renderMembers(members) {
       .join("") || '<tr><td colspan="4">No members synced yet.</td></tr>';
 }
 
+function renderInstitutionSegments(names = []) {
+  $("#institutionSegmentList").innerHTML =
+    names
+      .map((name) => {
+        const canRemove = !["semcme", "non-semcme"].includes(String(name).toLowerCase());
+        return `<span class="segment-pill">${esc(name)}${
+          canRemove
+            ? `<button type="button" aria-label="Remove ${esc(name)}" data-segment-name="${esc(name)}">&times;</button>`
+            : ""
+        }</span>`;
+      })
+      .join("") || '<span class="segment-empty">No institution segments configured.</span>';
+}
+
 function fillProgramForm(program) {
   const form = $("#programForm");
   form.slug.value = program?.slug || "";
@@ -205,6 +219,7 @@ async function load() {
     $("#dashboard").classList.remove("hidden");
     renderHeroEvents(d.heroEvents || []);
     renderMembers(d.members || []);
+    renderInstitutionSegments(d.virtualInstitutionSegments || []);
     renderContent(d.libraryPrograms || []);
     renderSupport(d.support || []);
     const resourceCount = (d.libraryPrograms || []).reduce((sum, program) => sum + flattenResources(program).length, 0);
@@ -402,8 +417,52 @@ $("#syncMembers").addEventListener("click", async (e) => {
       api("/api/admin/sync-members", { method: "POST" }),
     );
     status.textContent = d.configured
-      ? `Synced ${d.synced} members from Constant Contact${d.missingInstitutions ? `; ${d.missingInstitutions} missing institution ${d.missingInstitutions === 1 ? "value" : "values"} in Constant Contact.` : "."}`
+      ? `Synced ${d.synced} members from Constant Contact. Checked ${d.institutionSegments || 0} institution ${Number(d.institutionSegments || 0) === 1 ? "segment" : "segments"} and updated ${d.institutionSynced || 0} institution ${Number(d.institutionSynced || 0) === 1 ? "value" : "values"}.`
       : "Constant Contact Virtual Members list lookup is not configured yet.";
+    status.classList.add("success");
+    await load();
+  } catch (x) {
+    status.textContent = x.message;
+    status.classList.remove("success");
+  }
+});
+
+$("#institutionSegmentForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const button = e.submitter || e.currentTarget.querySelector("button[type='submit']");
+  const status = $("#institutionSegmentStatus");
+  const name = e.currentTarget.name.value.trim();
+  status.textContent = "Saving institution...";
+  try {
+    const d = await withLoading(button, "Saving...", () =>
+      api("/api/admin/institution-segments", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      }),
+    );
+    e.currentTarget.reset();
+    renderInstitutionSegments(d.virtualInstitutionSegments || []);
+    status.textContent = "Institution added to the segment checker.";
+    status.classList.add("success");
+    await load();
+  } catch (x) {
+    status.textContent = x.message;
+    status.classList.remove("success");
+  }
+});
+
+$("#institutionSegmentList").addEventListener("click", async (e) => {
+  const button = e.target.closest("[data-segment-name]");
+  if (!button) return;
+  const name = button.dataset.segmentName;
+  const status = $("#institutionSegmentStatus");
+  status.textContent = "Removing institution...";
+  try {
+    const d = await withLoading(button, "Removing...", () =>
+      api(`/api/admin/institution-segments?name=${encodeURIComponent(name)}`, { method: "DELETE" }),
+    );
+    renderInstitutionSegments(d.virtualInstitutionSegments || []);
+    status.textContent = "Institution removed from the segment checker.";
     status.classList.add("success");
     await load();
   } catch (x) {

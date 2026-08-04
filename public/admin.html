@@ -248,6 +248,27 @@
                 </button>
               </div>
             </div>
+            <div class="segment-settings">
+              <div>
+                <h3>Institution segment checker</h3>
+                <p>
+                  Sync members checks Constant Contact segments named
+                  “Virtual Membership - [Institution] Contacts.” Add the exact
+                  institution name shown in that segment name.
+                </p>
+              </div>
+              <form id="institutionSegmentForm">
+                <label
+                  >Institution name<input
+                    name="name"
+                    placeholder="NON-SEMCME"
+                    autocomplete="off" /></label
+                >
+                <button class="outline-button" type="submit">Add institution</button>
+              </form>
+              <div id="institutionSegmentList" class="segment-pill-list"></div>
+              <p id="institutionSegmentStatus" class="form-status"></p>
+            </div>
             <div class="table-wrap">
               <table>
                 <thead>

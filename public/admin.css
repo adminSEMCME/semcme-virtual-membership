@@ -569,6 +569,73 @@ button.is-loading::after {
   flex-wrap: wrap;
   justify-content: flex-end;
 }
+.segment-settings {
+  margin: 0 28px 22px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8fbfc;
+}
+.segment-settings h3 {
+  margin: 0;
+  color: var(--navy);
+  font: 800 16px "Manrope";
+}
+.segment-settings p {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 5px 0 0;
+}
+.segment-settings form {
+  display: grid;
+  grid-template-columns: minmax(220px, 420px) auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 12px;
+}
+.segment-settings label {
+  margin: 0;
+}
+.segment-settings .outline-button {
+  min-width: 160px;
+}
+.segment-pill-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.segment-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e3f3ec;
+  color: #146c4d;
+  font-size: 12px;
+  font-weight: 800;
+}
+.segment-pill button {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 999px;
+  background: #cbe7dc;
+  color: #146c4d;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+.segment-pill button:hover:not(:disabled) {
+  background: #146c4d;
+  color: #fff;
+}
+.segment-empty {
+  color: var(--muted);
+  font-size: 13px;
+}
 .table-wrap {
   overflow: auto;
 }
