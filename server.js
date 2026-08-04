@@ -882,7 +882,6 @@ async function constantContactListContacts({ email = '' } = {}) {
   const listId = await virtualMembersListId();
   const params = new URLSearchParams({
     lists: listId,
-    status: 'active',
     include: 'list_memberships,custom_fields',
     limit: email ? '1' : '500'
   });
@@ -895,7 +894,7 @@ async function constantContactListContacts({ email = '' } = {}) {
     records.push(...contactRecords(data));
     url = constantContactNextUrl(data);
   }
-  return { configured:true, records };
+  return { configured:true, records, listId, listName:ccVirtualMembersListName };
 }
 
 async function findConstantContactListMember(email) {
@@ -914,7 +913,7 @@ async function syncConstantContactMembers() {
     if (await upsertMemberFromContact(record)) synced += 1;
     else skipped += 1;
   }
-  return { configured:true, synced, checked:result.records.length, skipped, databaseType:db.type };
+  return { configured:true, synced, checked:result.records.length, skipped, databaseType:db.type, listId:result.listId, listName:result.listName };
 }
 
 async function createMagicLink(memberRow) {
@@ -1101,6 +1100,8 @@ async function api(req, res, path) {
       heroEvents,
       constantContactConfigured,
       databaseType:db.type,
+      constantContactListId:ccVirtualMembersListId || resolvedVirtualMembersListId || '',
+      constantContactListName:ccVirtualMembersListName,
       registrationUrl,
       libraryPrograms:await getLibraryPrograms({ includeDisabled:true }),
       members:await db.all('SELECT * FROM members ORDER BY created_at DESC LIMIT 500'),

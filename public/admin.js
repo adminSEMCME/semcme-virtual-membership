@@ -207,9 +207,10 @@ async function load() {
     renderContent(d.libraryPrograms || []);
     renderSupport(d.support || []);
     const databaseLabel = d.databaseType === "postgres" ? "Live Postgres database" : "temporary SQLite database";
+    const listLabel = [d.constantContactListName, d.constantContactListId].filter(Boolean).join(" / ");
     $("#ccStatus").classList.remove("hidden");
     $("#ccStatus").textContent = d.constantContactConfigured
-      ? `Constant Contact Virtual Members list lookup is configured. Database: ${databaseLabel}.`
+      ? `Constant Contact Virtual Members list lookup is configured${listLabel ? ` for ${listLabel}` : ""}. Database: ${databaseLabel}.`
       : `Constant Contact lookup is not configured yet. Database: ${databaseLabel}. Add the Virtual Members contact list credentials to enable sync.`;
     const resourceCount = (d.libraryPrograms || []).reduce((sum, program) => sum + flattenResources(program).length, 0);
     $("#stats").innerHTML =
@@ -402,7 +403,7 @@ $("#syncMembers").addEventListener("click", async (e) => {
       api("/api/admin/sync-members", { method: "POST" }),
     );
     status.textContent = d.configured
-      ? `Synced ${d.synced} members from Constant Contact${d.checked !== undefined ? ` (${d.checked} checked${d.skipped ? `, ${d.skipped} skipped` : ""})` : ""}${d.databaseType ? ` using ${d.databaseType === "postgres" ? "Postgres" : "SQLite"}.` : "."}`
+      ? `Synced ${d.synced} members from Constant Contact${d.checked !== undefined ? ` (${d.checked} checked${d.skipped ? `, ${d.skipped} skipped` : ""})` : ""}${d.listName || d.listId ? ` from ${[d.listName, d.listId].filter(Boolean).join(" / ")}` : ""}${d.databaseType ? ` using ${d.databaseType === "postgres" ? "Postgres" : "SQLite"}.` : "."}`
       : "Constant Contact Virtual Members list lookup is not configured yet.";
     status.classList.add("success");
     await load();
