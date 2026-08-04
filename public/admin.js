@@ -396,7 +396,7 @@ $("#syncEvents").addEventListener("click", async (e) => {
 
 $("#syncMembers").addEventListener("click", async (e) => {
   const button = e.currentTarget;
-  const status = $("#contentStatus");
+  const status = $("#memberSyncStatus");
   status.textContent = "Syncing members...";
   try {
     const d = await withLoading(button, "Syncing...", () =>

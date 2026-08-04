@@ -542,7 +542,21 @@ button.is-loading::after {
   overflow: hidden;
 }
 .table-panel h2 {
+  margin: 0;
+}
+.table-panel > h2 {
   padding: 28px 28px 20px;
+}
+.table-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px 28px 20px;
+}
+.table-panel-head .form-status {
+  margin: 8px 0 0;
+  max-width: 900px;
 }
 .table-wrap {
   overflow: auto;

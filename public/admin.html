@@ -57,9 +57,6 @@
           </div>
           <div class="admin-actions">
             <button id="refresh" class="outline-button">Refresh data</button>
-            <button id="syncMembers" class="outline-button" type="button">
-              Sync members
-            </button>
             <button id="adminLogout" class="outline-button" type="button">
               Sign out
             </button>
@@ -238,7 +235,15 @@
           </section>
           <p id="ccStatus" class="sync-note hidden"></p>
           <section class="admin-panel table-panel full">
-            <h2>Members</h2>
+            <div class="table-panel-head">
+              <div>
+                <h2>Members</h2>
+                <p id="memberSyncStatus" class="form-status"></p>
+              </div>
+              <button id="syncMembers" class="outline-button" type="button">
+                Sync members
+              </button>
+            </div>
             <div class="table-wrap">
               <table>
                 <thead>
