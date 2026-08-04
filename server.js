@@ -3,7 +3,7 @@ import { readFile, mkdir } from 'node:fs/promises';
 import { dirname, extname, join, normalize } from 'node:path';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { programs as defaultPrograms, defaultBanner } from './data/library.js';
+import { programs as defaultPrograms, defaultBanner, defaultEvents } from './data/library.js';
 
 const root = new URL('.', import.meta.url).pathname;
 
@@ -338,6 +338,24 @@ const decodeHtml = value => String(value || '')
   .replace(/&gt;/g, '>')
   .replace(/&quot;/g, '"')
   .replace(/&#39;/g, "'");
+
+async function getSettingJson(key, fallback) {
+  const row = await db.get('SELECT value FROM settings WHERE key=$1', [key]);
+  if (!row?.value) return fallback;
+  try {
+    return JSON.parse(row.value);
+  } catch {
+    return fallback;
+  }
+}
+
+async function setSettingJson(key, value) {
+  await db.run(`
+    INSERT INTO settings (key, value)
+    VALUES ($1, $2)
+    ON CONFLICT(key) DO UPDATE SET value=excluded.value
+  `, [key, JSON.stringify(value)]);
+}
 
 function resourceShouldEmbed(resource) {
   const title = String(resource.title || '').toLowerCase();
@@ -834,10 +852,12 @@ async function syncConstantContactMembers() {
   const result = await constantContactListContacts();
   if (!result.configured) return { configured:false, synced:0 };
   let synced = 0;
+  let skipped = 0;
   for (const record of result.records) {
     if (await upsertMemberFromContact(record)) synced += 1;
+    else skipped += 1;
   }
-  return { configured:true, synced };
+  return { configured:true, synced, checked:result.records.length, skipped };
 }
 
 async function createMagicLink(memberRow) {
@@ -927,10 +947,17 @@ async function verifyMagicToken(token) {
 let virtualEventsCache = { at: 0, events: [] };
 async function getVirtualEvents(force=false) {
   if (!force && virtualEventsCache.at > Date.now() - semcmeHeroRefreshMs) return virtualEventsCache.events;
+  const storedEvents = await getSettingJson('virtual_hero_events', []);
   const r = await fetch(semcmeHomeUrl);
   if (!r.ok) throw new Error(`SEMCME homepage returned ${r.status}`);
   const html = await r.text();
   const events = parseSemcmeVirtualSlides(html);
+  if (!events.length) {
+    const fallbackEvents = storedEvents.length ? storedEvents : defaultEvents;
+    virtualEventsCache = { at: Date.now(), events: fallbackEvents };
+    return fallbackEvents;
+  }
+  await setSettingJson('virtual_hero_events', events);
   virtualEventsCache = { at: Date.now(), events };
   return events;
 }
@@ -941,7 +968,7 @@ function parseSemcmeVirtualSlides(html) {
     imageByClass.set(match[1], match[2].replace(/^['"]|['"]$/g, ''));
   }
   const slides = [];
-  const slideRe = /<div class="et_pb_slide et_pb_slide_(\d+)[\s\S]*?(?=<div class="et_pb_slide et_pb_slide_\d+|<\/div>\s*<\/div>\s*<\/div>\s*<\/div>)/g;
+  const slideRe = /<div class="[^"]*\bet_pb_slide\b[^"]*\bet_pb_slide_(\d+)\b[^"]*"[\s\S]*?(?=<div class="[^"]*\bet_pb_slide\b[^"]*\bet_pb_slide_\d+\b|<\/div>\s*<\/div>\s*<\/div>\s*<\/div>)/g;
   for (const match of html.matchAll(slideRe)) {
     const index = match[1], block = match[0];
     const titleMatch = block.match(/<h2 class="et_pb_slide_title">\s*<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>\s*<\/h2>/);

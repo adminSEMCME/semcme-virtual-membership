@@ -22,6 +22,28 @@ let dashboard = null;
 let selectedProgramSlug = "";
 let selectedResourceId = "";
 
+function formatDate(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) return date.toLocaleDateString();
+  const fallback = new Date(String(value).replace(" ", "T") + "Z");
+  return Number.isNaN(fallback.getTime()) ? "-" : fallback.toLocaleDateString();
+}
+
+async function withLoading(button, label, task) {
+  const original = button.textContent;
+  button.disabled = true;
+  button.classList.add("is-loading");
+  button.textContent = label;
+  try {
+    return await task();
+  } finally {
+    button.disabled = false;
+    button.classList.remove("is-loading");
+    button.textContent = original;
+  }
+}
+
 function formObject(form) {
   const data = Object.fromEntries(new FormData(form));
   form.querySelectorAll('input[type="checkbox"]').forEach((input) => {
@@ -64,7 +86,7 @@ function renderMembers(members) {
     members
       .map(
         (x) =>
-          `<tr><td><strong>${esc([x.first_name, x.last_name].filter(Boolean).join(" ") || x.email)}</strong><small>${esc(x.email)}</small></td><td>${esc(x.institution || "-")}</td><td>${badge(x.cc_status)}</td><td>${esc(new Date(x.created_at + "Z").toLocaleDateString())}</td></tr>`,
+          `<tr><td><strong>${esc([x.first_name, x.last_name].filter(Boolean).join(" ") || x.email)}</strong><small>${esc(x.email)}</small></td><td>${esc(x.institution || "-")}</td><td>${badge(x.cc_status)}</td><td>${esc(formatDate(x.created_at || x.updated_at || x.last_cc_sync_at))}</td></tr>`,
       )
       .join("") || '<tr><td colspan="4">No members synced yet.</td></tr>';
 }
@@ -143,7 +165,7 @@ function renderSupport(support) {
     (support || [])
       .map(
         (x) =>
-          `<tr><td><strong>${esc(x.name)}</strong><small>${esc(x.email)}</small></td><td>${esc(x.topic)}</td><td>${esc(x.message)}</td><td>${esc(new Date(x.created_at + "Z").toLocaleDateString())}</td></tr>`,
+          `<tr><td><strong>${esc(x.name)}</strong><small>${esc(x.email)}</small></td><td>${esc(x.topic)}</td><td>${esc(x.message)}</td><td>${esc(formatDate(x.created_at))}</td></tr>`,
       )
       .join("") || '<tr><td colspan="4">No support requests yet.</td></tr>';
 }
@@ -197,13 +219,16 @@ $("#newProgram").addEventListener("click", () => {
 
 $("#programForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+  const button = e.submitter || e.currentTarget.querySelector("button[type='submit']");
   const status = $("#contentStatus");
   status.textContent = "Saving program...";
   try {
-    const result = await api("/api/admin/library/program", {
-      method: "POST",
-      body: JSON.stringify(formObject(e.currentTarget)),
-    });
+    const result = await withLoading(button, "Saving...", () =>
+      api("/api/admin/library/program", {
+        method: "POST",
+        body: JSON.stringify(formObject(e.currentTarget)),
+      }),
+    );
     selectedProgramSlug = result.slug;
     selectedResourceId = "";
     status.textContent = "Program saved.";
@@ -216,12 +241,15 @@ $("#programForm").addEventListener("submit", async (e) => {
 });
 
 $("#deleteProgram").addEventListener("click", async () => {
+  const button = $("#deleteProgram");
   const slug = $("#programForm").slug.value;
   if (!slug || !confirm("Delete this program area and all of its library items?")) return;
   const status = $("#contentStatus");
   status.textContent = "Deleting program...";
   try {
-    await api(`/api/admin/library/program?slug=${encodeURIComponent(slug)}`, { method: "DELETE" });
+    await withLoading(button, "Deleting...", () =>
+      api(`/api/admin/library/program?slug=${encodeURIComponent(slug)}`, { method: "DELETE" }),
+    );
     selectedProgramSlug = "";
     selectedResourceId = "";
     status.textContent = "Program deleted.";
@@ -237,14 +265,17 @@ $("#newResource").addEventListener("click", () => fillResourceForm(null));
 
 $("#resourceForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+  const button = e.submitter || e.currentTarget.querySelector("button[type='submit']");
   const status = $("#contentStatus");
   const payload = { ...formObject(e.currentTarget), programSlug: $("#programForm").slug.value || selectedProgramSlug };
   status.textContent = "Saving item...";
   try {
-    const result = await api("/api/admin/library/resource", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    const result = await withLoading(button, "Saving...", () =>
+      api("/api/admin/library/resource", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }),
+    );
     selectedResourceId = result.id;
     status.textContent = "Library item saved.";
     status.classList.add("success");
@@ -256,12 +287,15 @@ $("#resourceForm").addEventListener("submit", async (e) => {
 });
 
 $("#deleteResource").addEventListener("click", async () => {
+  const button = $("#deleteResource");
   const id = $("#resourceForm").id.value;
   if (!id || !confirm("Delete this library item?")) return;
   const status = $("#contentStatus");
   status.textContent = "Deleting item...";
   try {
-    await api(`/api/admin/library/resource?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    await withLoading(button, "Deleting...", () =>
+      api(`/api/admin/library/resource?id=${encodeURIComponent(id)}`, { method: "DELETE" }),
+    );
     selectedResourceId = "";
     status.textContent = "Library item deleted.";
     status.classList.add("success");
@@ -288,7 +322,9 @@ $("#syncEvents").addEventListener("click", async (e) => {
     status = panel.querySelector(".form-status");
   status.textContent = "Refreshing SEMCME.org programs...";
   try {
-    const d = await api("/api/admin/sync-virtual-events", { method: "POST" });
+    const d = await withLoading(e.currentTarget, "Refreshing...", () =>
+      api("/api/admin/sync-virtual-events", { method: "POST" }),
+    );
     status.textContent = `Found ${d.count} virtual programs.`;
     status.classList.add("success");
     await load();
@@ -301,22 +337,21 @@ $("#syncEvents").addEventListener("click", async (e) => {
 $("#syncMembers").addEventListener("click", async (e) => {
   const button = e.currentTarget;
   const status = $("#contentStatus");
-  button.disabled = true;
   status.textContent = "Syncing members...";
   try {
-    const d = await api("/api/admin/sync-members", { method: "POST" });
+    const d = await withLoading(button, "Syncing...", () =>
+      api("/api/admin/sync-members", { method: "POST" }),
+    );
     status.textContent = d.configured
-      ? `Synced ${d.synced} members from Constant Contact.`
+      ? `Synced ${d.synced} members from Constant Contact${d.checked !== undefined ? ` (${d.checked} checked)` : ""}.`
       : "Constant Contact Virtual Members list lookup is not configured yet.";
     status.classList.add("success");
     await load();
   } catch (x) {
     status.textContent = x.message;
     status.classList.remove("success");
-  } finally {
-    button.disabled = false;
   }
 });
 
-$("#refresh").addEventListener("click", load);
+$("#refresh").addEventListener("click", (e) => withLoading(e.currentTarget, "Refreshing...", load));
 await load();

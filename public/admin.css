@@ -94,6 +94,13 @@
   font-weight: 700;
   border-radius: 8px;
   padding: 10px 16px;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+.outline-button:hover:not(:disabled) {
+  background: var(--blue);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(0, 81, 157, 0.18);
 }
 .outline-button:disabled {
   opacity: 0.55;
@@ -141,6 +148,17 @@
 }
 .admin-panel .primary-button {
   margin-top: 22px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+.admin-panel .primary-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(0.98);
+  box-shadow: 0 12px 26px rgba(244, 159, 10, 0.22);
+}
+.admin-panel .primary-button:disabled,
+.danger-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
 }
 .danger-button {
   border: 1px solid #a73d3d;
@@ -149,6 +167,33 @@
   font-weight: 800;
   border-radius: 8px;
   padding: 11px 16px;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+.danger-button:hover:not(:disabled) {
+  background: #a73d3d;
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(167, 61, 61, 0.16);
+}
+button.is-loading {
+  position: relative;
+}
+button.is-loading::after {
+  content: "";
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  margin-left: 9px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  vertical-align: -2px;
+  animation: admin-spin 0.8s linear infinite;
+}
+@keyframes admin-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .panel-title {
   display: flex;
@@ -211,7 +256,7 @@
 }
 .content-tools {
   display: grid;
-  grid-template-columns: minmax(300px, 0.82fr) minmax(420px, 1.18fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   margin-top: 18px;
 }
@@ -253,7 +298,7 @@
 }
 .workflow-steps {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   list-style: none;
   margin: 22px 0 0;
@@ -264,6 +309,10 @@
   border-radius: 10px;
   background: #f8fbfc;
   padding: 14px;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
 }
 .workflow-steps strong,
 .workflow-steps span {
@@ -370,10 +419,14 @@
   grid-template-columns: 120px minmax(0, 1fr) auto;
   gap: 10px 16px;
   align-items: center;
+  transition: background 0.18s ease, box-shadow 0.18s ease;
 }
 .content-table button:hover,
 .content-table button.active {
   background: #f5fafc;
+}
+.content-table button:hover {
+  box-shadow: inset 4px 0 0 var(--blue);
 }
 .content-table strong {
   color: var(--navy);
@@ -483,6 +536,9 @@ td small {
     grid-template-columns: 1fr;
   }
   .workflow-steps {
+    grid-template-columns: 1fr;
+  }
+  .workflow-steps li {
     grid-template-columns: 1fr;
   }
   .content-table button {
