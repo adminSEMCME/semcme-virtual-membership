@@ -21,6 +21,7 @@ const api = async (url, options = {}) => {
 let dashboard = null;
 let selectedProgramSlug = "";
 let selectedResourceId = "";
+let confirmResolver = null;
 
 function formatDate(value) {
   if (!value) return "-";
@@ -42,6 +43,29 @@ async function withLoading(button, label, task) {
     button.classList.remove("is-loading");
     button.textContent = original;
   }
+}
+
+function confirmAction({ title, message, actionLabel = "Confirm", danger = false }) {
+  const overlay = $("#confirmOverlay");
+  const accept = $("#confirmAccept");
+  const cancel = $("#confirmCancel");
+  $("#confirmTitle").textContent = title;
+  $("#confirmMessage").textContent = message;
+  accept.textContent = actionLabel;
+  accept.className = danger ? "danger-button" : "primary-button";
+  overlay.classList.remove("hidden");
+  accept.focus();
+  return new Promise((resolve) => {
+    confirmResolver = resolve;
+  });
+}
+
+function closeConfirm(result = false) {
+  if (!confirmResolver) return;
+  $("#confirmOverlay").classList.add("hidden");
+  const resolve = confirmResolver;
+  confirmResolver = null;
+  resolve(result);
 }
 
 function formObject(form) {
@@ -223,6 +247,15 @@ $("#programForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const button = e.submitter || e.currentTarget.querySelector("button[type='submit']");
   const status = $("#contentStatus");
+  const isNew = !e.currentTarget.slug.readOnly;
+  const ok = await confirmAction({
+    title: isNew ? "Save new program area?" : "Save program changes?",
+    message: isNew
+      ? "This will add a new program area to the member site if Show on member site is checked."
+      : "This will update the selected program area on the member site.",
+    actionLabel: "Save program",
+  });
+  if (!ok) return;
   status.textContent = "Saving program...";
   try {
     const result = await withLoading(button, "Saving...", () =>
@@ -245,7 +278,14 @@ $("#programForm").addEventListener("submit", async (e) => {
 $("#deleteProgram").addEventListener("click", async () => {
   const button = $("#deleteProgram");
   const slug = $("#programForm").slug.value;
-  if (!slug || !confirm("Delete this program area and all of its library items?")) return;
+  if (!slug) return;
+  const ok = await confirmAction({
+    title: "Delete this program area?",
+    message: "This will remove the program area and all of its library items from the member site.",
+    actionLabel: "Delete program",
+    danger: true,
+  });
+  if (!ok) return;
   const status = $("#contentStatus");
   status.textContent = "Deleting program...";
   try {
@@ -270,6 +310,14 @@ $("#resourceForm").addEventListener("submit", async (e) => {
   const button = e.submitter || e.currentTarget.querySelector("button[type='submit']");
   const status = $("#contentStatus");
   const payload = { ...formObject(e.currentTarget), programSlug: $("#programForm").slug.value || selectedProgramSlug };
+  const ok = await confirmAction({
+    title: payload.id ? "Save item changes?" : "Save new library item?",
+    message: payload.id
+      ? "This will update the selected item on the member site."
+      : "This will add this item to the selected section on the member site.",
+    actionLabel: "Save item",
+  });
+  if (!ok) return;
   status.textContent = "Saving item...";
   try {
     const result = await withLoading(button, "Saving...", () =>
@@ -291,7 +339,14 @@ $("#resourceForm").addEventListener("submit", async (e) => {
 $("#deleteResource").addEventListener("click", async () => {
   const button = $("#deleteResource");
   const id = $("#resourceForm").id.value;
-  if (!id || !confirm("Delete this library item?")) return;
+  if (!id) return;
+  const ok = await confirmAction({
+    title: "Delete this library item?",
+    message: "This will remove the selected item from the member site.",
+    actionLabel: "Delete item",
+    danger: true,
+  });
+  if (!ok) return;
   const status = $("#contentStatus");
   status.textContent = "Deleting item...";
   try {
@@ -356,4 +411,12 @@ $("#syncMembers").addEventListener("click", async (e) => {
 });
 
 $("#refresh").addEventListener("click", (e) => withLoading(e.currentTarget, "Refreshing...", load));
+$("#confirmCancel").addEventListener("click", () => closeConfirm(false));
+$("#confirmAccept").addEventListener("click", () => closeConfirm(true));
+$("#confirmOverlay").addEventListener("click", (e) => {
+  if (e.target.id === "confirmOverlay") closeConfirm(false);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeConfirm(false);
+});
 await load();

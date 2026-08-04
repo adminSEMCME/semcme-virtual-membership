@@ -76,22 +76,34 @@
             </div>
             <ol class="workflow-steps" aria-label="Library content workflow">
               <li>
-                <strong>1. Choose a program area</strong>
+                <strong>1. Review posted items</strong>
+                <span>See what is currently live for the selected program area.</span>
+              </li>
+              <li>
+                <strong>2. Choose a program area</strong>
                 <span>Select the left-side category members click, such as JEDI or OB/GYN.</span>
               </li>
               <li>
-                <strong>2. Add or edit a library item</strong>
-                <span>Choose where it appears: Upcoming, Current, or Archive.</span>
-              </li>
-              <li>
-                <strong>3. Review the posted list</strong>
-                <span>Click an existing item below to edit it, or delete it if it should be removed.</span>
+                <strong>3. Add or edit a library item</strong>
+                <span>Click an existing item to edit it, or create a new one.</span>
               </li>
             </ol>
+            <div class="posted-list-head">
+              <span class="step-badge">Step 1</span>
+              <div>
+                <h3>Review posted items</h3>
+                <p>
+                  This list updates when an item or program is saved. Click an
+                  item already in the list to prefill the inputs below with its
+                  current details for updating.
+                </p>
+              </div>
+            </div>
+            <div id="contentRows" class="content-rows"></div>
             <div class="content-tools">
               <div class="program-editor">
                 <div class="editor-title">
-                  <span class="step-badge">Step 1</span>
+                  <span class="step-badge">Step 2</span>
                   <h3>Choose or edit a program area</h3>
                   <button id="newProgram" class="outline-button" type="button">
                     New program
@@ -133,7 +145,7 @@
               </div>
               <div class="resource-editor">
                 <div class="editor-title">
-                  <span class="step-badge">Step 2</span>
+                  <span class="step-badge">Step 3</span>
                   <h3>Add or edit one item</h3>
                   <button id="newResource" class="outline-button" type="button">
                     New item
@@ -201,14 +213,6 @@
               </div>
             </div>
             <p id="contentStatus" class="form-status"></p>
-            <div class="posted-list-head">
-              <span class="step-badge">Step 3</span>
-              <div>
-                <h3>Review posted items</h3>
-                <p>These are the items currently assigned to the selected program area.</p>
-              </div>
-            </div>
-            <div id="contentRows" class="content-rows"></div>
           </section>
           <section class="admin-panel sync-panel full">
             <div class="panel-title">
@@ -262,6 +266,21 @@
         </div>
       </section>
     </main>
+    <div id="confirmOverlay" class="confirm-overlay hidden" role="presentation">
+      <section
+        class="confirm-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirmTitle"
+        aria-describedby="confirmMessage">
+        <h2 id="confirmTitle">Confirm update</h2>
+        <p id="confirmMessage">Are you sure?</p>
+        <div class="confirm-actions">
+          <button id="confirmCancel" class="outline-button" type="button">Cancel</button>
+          <button id="confirmAccept" class="primary-button" type="button">Confirm</button>
+        </div>
+      </section>
+    </div>
     <script type="module" src="/admin.js"></script>
   </body>
 </html>

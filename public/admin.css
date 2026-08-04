@@ -400,16 +400,18 @@ button.is-loading::after {
 }
 .content-rows {
   display: grid;
-  gap: 16px;
-  margin-top: 14px;
+  gap: 12px;
+  margin-top: 12px;
 }
 .posted-list-head {
   display: flex;
   align-items: start;
   gap: 12px;
-  border-top: 1px solid var(--line);
-  margin-top: 18px;
-  padding-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px 10px 0 0;
+  background: #eef3f4;
+  margin-top: 16px;
+  padding: 14px 16px;
 }
 .posted-list-head p {
   margin: 4px 0 0;
@@ -418,6 +420,7 @@ button.is-loading::after {
   border: 1px solid var(--line);
   border-radius: 10px;
   overflow: hidden;
+  background: #fff;
 }
 .content-group-head {
   background: #eef3f4;
@@ -528,6 +531,44 @@ td small {
 .status-pill.off {
   background: #edf1f4;
   color: #506673;
+}
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(6, 30, 50, 0.42);
+}
+.confirm-dialog {
+  width: min(100%, 460px);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 24px 70px rgba(6, 30, 50, 0.24);
+  padding: 24px;
+}
+.confirm-dialog h2 {
+  color: var(--navy);
+  font: 700 24px "Manrope";
+  margin: 0 0 8px;
+}
+.confirm-dialog p {
+  color: var(--muted);
+  margin: 0;
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+.confirm-actions .outline-button,
+.confirm-actions .primary-button,
+.confirm-actions .danger-button {
+  width: auto;
+  min-width: 130px;
+  justify-content: center;
 }
 .full {
   grid-column: 1/-1;
