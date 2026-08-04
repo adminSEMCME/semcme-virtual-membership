@@ -55,7 +55,12 @@
             <span class="mini-kicker">Staff dashboard</span>
             <h1>Virtual Membership</h1>
           </div>
-          <button id="refresh" class="outline-button">Refresh data</button>
+          <div class="admin-actions">
+            <button id="refresh" class="outline-button">Refresh data</button>
+            <button id="syncMembers" class="outline-button" type="button">
+              Sync members
+            </button>
+          </div>
         </div>
         <div id="stats" class="stats"></div>
         <div class="admin-grid">
@@ -64,38 +69,57 @@
               <div>
                 <h2>Library content</h2>
                 <p>
-                  Add, update, move, or remove items shown in Upcoming programs,
-                  Current & previous academic year, and Archive.
+                  Follow the steps below to control what members see in each
+                  program area.
                 </p>
               </div>
             </div>
+            <ol class="workflow-steps" aria-label="Library content workflow">
+              <li>
+                <strong>1. Choose a program area</strong>
+                <span>Select the left-side category members click, such as JEDI or OB/GYN.</span>
+              </li>
+              <li>
+                <strong>2. Add or edit a library item</strong>
+                <span>Choose where it appears: Upcoming, Current, or Archive.</span>
+              </li>
+              <li>
+                <strong>3. Review the posted list</strong>
+                <span>Click an existing item below to edit it, or delete it if it should be removed.</span>
+              </li>
+            </ol>
             <div class="content-tools">
               <div class="program-editor">
                 <div class="editor-title">
-                  <h3>Program area</h3>
+                  <span class="step-badge">Step 1</span>
+                  <h3>Choose or edit a program area</h3>
                   <button id="newProgram" class="outline-button" type="button">
                     New program
                   </button>
                 </div>
+                <p class="field-help">
+                  Program areas are the categories in the member sidebar. Most
+                  updates only require choosing an existing program here.
+                </p>
                 <label
                   >Select program<select id="programEditorSelect"></select
                 ></label>
                 <form id="programForm" class="field-grid">
                   <label
                     >Slug<input name="slug" required placeholder="faculty-development"
-                  /></label>
+                  /><small>URL-safe internal name. Use lowercase letters, numbers, and hyphens.</small></label>
                   <label
                     >Name<input name="name" required placeholder="Faculty Development"
-                  /></label>
+                  /><small>Public label shown to members.</small></label>
                   <label
                     >Short label<input name="short" maxlength="4" placeholder="FD"
-                  /></label>
+                  /><small>Two to four letters shown in the sidebar badge.</small></label>
                   <label
                     >Display order<input name="position" type="number" step="1"
-                  /></label>
+                  /><small>Lower numbers appear first.</small></label>
                   <label class="wide"
                     >Description<textarea name="description" rows="3"></textarea
-                  ></label>
+                  ><small>Short intro text at the top of the program page.</small></label>
                   <label class="check-row"
                     ><input name="enabled" type="checkbox" checked /> Show on member site</label
                   >
@@ -109,11 +133,16 @@
               </div>
               <div class="resource-editor">
                 <div class="editor-title">
-                  <h3>Library item</h3>
+                  <span class="step-badge">Step 2</span>
+                  <h3>Add or edit one item</h3>
                   <button id="newResource" class="outline-button" type="button">
                     New item
                   </button>
                 </div>
+                <p class="field-help">
+                  Use this for videos, playlists, registration links, PDFs, or
+                  outside resources. Save after each item.
+                </p>
                 <form id="resourceForm" class="field-grid">
                   <input name="id" type="hidden" />
                   <label
@@ -121,7 +150,7 @@
                       <option value="upcoming">Upcoming programs</option>
                       <option value="current">Current & previous academic year</option>
                       <option value="archives">Archive</option>
-                    </select></label
+                    </select><small>Controls which list this item appears in.</small></label
                   >
                   <label
                     >Type<select name="type">
@@ -129,32 +158,39 @@
                       <option value="playlist">YouTube playlist</option>
                       <option value="course">Course / registration</option>
                       <option value="resource">Resource / link</option>
-                    </select></label
+                    </select><small>Controls the label and display style.</small></label
                   >
                   <label class="wide"
                     >Title<input name="title" required
-                  /></label>
+                  /><small>The clickable title members will see.</small></label>
                   <label class="wide"
                     >URL<input name="url" type="url" required placeholder="https://..."
-                  /></label>
+                  /><small>Use a YouTube link for recordings/playlists or a full registration/resource URL.</small></label>
                   <label
                     >Group<input name="groupName" placeholder="Hot Topics"
-                  /></label>
+                  /><small>Optional series name.</small></label>
                   <label
                     >Presenter<input name="presenter"
-                  /></label>
+                  /><small>Optional speaker line.</small></label>
                   <label
                     >Date<input name="itemDate" placeholder="October 3, 2025"
-                  /></label>
+                  /><small>Optional display date.</small></label>
                   <label
                     >Meta<input name="meta" placeholder="Registration"
-                  /></label>
+                  /><small>Optional note, such as Registration or Handout.</small></label>
                   <label
                     >Display order<input name="position" type="number" step="1"
-                  /></label>
+                  /><small>Lower numbers appear first in this section.</small></label>
                   <label class="check-row"
                     ><input name="embedEnabled" type="checkbox" checked /> Embed YouTube player when possible</label
                   >
+                  <p class="wide field-help compact-help">
+                    Leave embedding on for public YouTube videos/playlists. Turn
+                    it off when YouTube shows “private,” “age restricted,” or
+                    “playback disabled”; members will get a clean link instead.
+                    YouTube playlists update automatically when videos are added
+                    on YouTube.
+                  </p>
                   <div class="form-actions wide">
                     <button class="primary-button" type="submit">Save item</button>
                     <button id="deleteResource" class="danger-button" type="button">
@@ -165,6 +201,13 @@
               </div>
             </div>
             <p id="contentStatus" class="form-status"></p>
+            <div class="posted-list-head">
+              <span class="step-badge">Step 3</span>
+              <div>
+                <h3>Review posted items</h3>
+                <p>These are the items currently assigned to the selected program area.</p>
+              </div>
+            </div>
             <div id="contentRows" class="content-rows"></div>
           </section>
           <section class="admin-panel sync-panel full">
@@ -183,21 +226,7 @@
             <div id="heroEventRows" class="sync-list"></div>
             <p class="form-status"></p>
           </section>
-          <section class="admin-panel sync-panel">
-            <div class="panel-title">
-              <div>
-                <h2>Virtual Membership members</h2>
-                <p>
-                  Sync contacts from the SEMCME Virtual Members contact list
-                  into the local member database.
-                </p>
-              </div>
-              <button id="syncMembers" class="outline-button" type="button">
-                Sync members
-              </button>
-            </div>
-            <p id="ccStatus" class="sync-note"></p>
-          </section>
+          <p id="ccStatus" class="sync-note hidden"></p>
           <section class="admin-panel table-panel full">
             <h2>Members</h2>
             <div class="table-wrap">

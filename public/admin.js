@@ -72,6 +72,7 @@ function renderMembers(members) {
 function fillProgramForm(program) {
   const form = $("#programForm");
   form.slug.value = program?.slug || "";
+  form.slug.readOnly = Boolean(program?.slug);
   form.name.value = program?.name || "";
   form.short.value = program?.short || "";
   form.position.value = program?.position ?? "";
@@ -191,6 +192,7 @@ $("#newProgram").addEventListener("click", () => {
   fillProgramForm(null);
   fillResourceForm(null);
   $("#programEditorSelect").value = "";
+  $("#programForm").slug.focus();
 });
 
 $("#programForm").addEventListener("submit", async (e) => {
@@ -297,17 +299,22 @@ $("#syncEvents").addEventListener("click", async (e) => {
 });
 
 $("#syncMembers").addEventListener("click", async (e) => {
-  const panel = e.currentTarget.closest(".admin-panel"),
-    status = panel.querySelector(".sync-note");
-  status.textContent = "Syncing Virtual Members contact list...";
+  const button = e.currentTarget;
+  const status = $("#contentStatus");
+  button.disabled = true;
+  status.textContent = "Syncing members...";
   try {
     const d = await api("/api/admin/sync-members", { method: "POST" });
     status.textContent = d.configured
       ? `Synced ${d.synced} members from Constant Contact.`
       : "Constant Contact Virtual Members list lookup is not configured yet.";
+    status.classList.add("success");
     await load();
   } catch (x) {
     status.textContent = x.message;
+    status.classList.remove("success");
+  } finally {
+    button.disabled = false;
   }
 });
 

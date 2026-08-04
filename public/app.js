@@ -98,27 +98,7 @@ function resourceCard(r) {
 
 function playlistPlayer(r) {
   if (r.embed === false) return resourceCard(r);
-  if (!r.videos?.length) return videoResource(r);
-  const first = r.videos[0];
-  return `<article class="playlist-player">
-    <div class="playlist-main">
-      <div class="video-frame">
-        <iframe src="${esc(youtubeEmbedUrl(first.url, "recording"))}" title="${esc(first.title)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-      </div>
-      <div class="video-copy">
-        <span class="resource-group">YouTube playlist</span>
-        <h3>${esc(r.title)}</h3>
-        ${r.meta ? `<p>${esc(r.meta)}</p>` : ""}
-        <a href="${esc(r.url)}" target="_blank" rel="noopener">Open full playlist <span>→</span></a>
-      </div>
-    </div>
-    <div class="playlist-queue" aria-label="${esc(r.title)} videos">
-      <div class="playlist-queue-head"><strong>${r.videos.length} videos</strong><span>Select a video</span></div>
-      ${r.videos
-        .map((v, i) => `<button type="button" class="${i === 0 ? "active" : ""}" data-playlist-video="${esc(v.url)}" data-title="${esc(v.title)}"><span>${i + 1}</span><strong>${esc(v.title)}</strong></button>`)
-        .join("")}
-    </div>
-  </article>`;
+  return videoResource(r);
 }
 
 function videoResource(r) {
@@ -136,7 +116,7 @@ function videoResource(r) {
       <span class="resource-group">${esc(r.group || label)}</span>
       <h3>${esc(r.title)}</h3>
       ${r.presenter || r.date || r.meta ? `<p>${esc([r.presenter, r.date, r.meta].filter(Boolean).join(" · "))}</p>` : ""}
-      ${isPlaylist && !r.videos?.length ? `<p>Use the playlist controls in the player to browse available videos.</p>` : ""}
+      ${isPlaylist ? `<p>YouTube manages this playlist. New videos added there will appear in the playlist player automatically.</p>` : ""}
       <a href="${esc(r.url)}" target="_blank" rel="noopener">${isPlaylist ? "Open full playlist" : "Open on YouTube"} <span>→</span></a>
     </div>
   </article>`;
@@ -167,16 +147,6 @@ function renderProgram(slug, updateHash = true) {
     <section class="content-section"><div class="section-title"><h2>Archive</h2><span>Prior academic years</span></div>${p.archives.length ? resourceCollection(p.archives, true) : `<div class="empty-state compact">No archived resources posted.</div>`}</section>`;
   if (updateHash) history.replaceState(null, "", `#${p.slug}`);
 }
-$("#programView").addEventListener("click", (e) => {
-  const button = e.target.closest("[data-playlist-video]");
-  if (!button) return;
-  const player = button.closest(".playlist-player");
-  const iframe = player?.querySelector("iframe");
-  if (!iframe) return;
-  iframe.src = youtubeEmbedUrl(button.dataset.playlistVideo, "recording");
-  iframe.title = button.dataset.title || "Selected playlist video";
-  player.querySelectorAll("[data-playlist-video]").forEach((item) => item.classList.toggle("active", item === button));
-});
 function renderLibrary() {
   renderEvent(0);
   $("#programNav").innerHTML = library.programs
