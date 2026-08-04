@@ -710,6 +710,33 @@ async function upsertMemberFromContact(contact, source='constant_contact_list') 
 }
 
 function extractEmail(value) {
+  const preferred = [
+    value?.email_address?.address,
+    value?.email_address?.email_address,
+    value?.email_address,
+    value?.email,
+    value?.contact?.email_address?.address,
+    value?.contact?.email_address?.email_address,
+    value?.contact?.email_address,
+    value?.contact?.email
+  ];
+  for (const item of preferred) {
+    if (typeof item === 'string' && emailOk(item)) return clean(item.toLowerCase(), 200);
+  }
+  const emailCollections = [
+    value?.email_addresses,
+    value?.emailAddresses,
+    value?.contact?.email_addresses,
+    value?.contact?.emailAddresses
+  ].filter(Array.isArray);
+  for (const collection of emailCollections) {
+    for (const item of collection) {
+      const email = typeof item === 'string'
+        ? item
+        : item?.address || item?.email_address || item?.email;
+      if (typeof email === 'string' && emailOk(email)) return clean(email.toLowerCase(), 200);
+    }
+  }
   const emails = [];
   const walk = v => {
     if (!v) return;
