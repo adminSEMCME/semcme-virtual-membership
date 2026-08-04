@@ -359,6 +359,23 @@ async function setSettingJson(key, value) {
   `, [key, JSON.stringify(value)]);
 }
 
+let loadedStoredConstantContactTokens = false;
+async function loadStoredConstantContactTokens() {
+  if (loadedStoredConstantContactTokens) return;
+  loadedStoredConstantContactTokens = true;
+  const tokens = await getSettingJson('constant_contact_tokens', null);
+  if (!tokens) return;
+  ccTokenState.accessToken = tokens.accessToken || tokens.access_token || ccTokenState.accessToken;
+  ccTokenState.refreshToken = tokens.refreshToken || tokens.refresh_token || ccTokenState.refreshToken;
+}
+
+async function saveStoredConstantContactTokens() {
+  await setSettingJson('constant_contact_tokens', {
+    accessToken: ccTokenState.accessToken,
+    refreshToken: ccTokenState.refreshToken
+  });
+}
+
 function resourceShouldEmbed(resource) {
   const title = String(resource.title || '').toLowerCase();
   return ![
@@ -840,6 +857,7 @@ async function extractInstitution(contact) {
 }
 
 async function refreshConstantContactAccessToken() {
+  await loadStoredConstantContactTokens();
   if (!ccClientId || !ccClientSecret || !ccTokenState.refreshToken) {
     throw new Error('Constant Contact access token expired and refresh credentials are not configured.');
   }
@@ -857,14 +875,19 @@ async function refreshConstantContactAccessToken() {
     })
   });
   const data = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(`Constant Contact token refresh returned ${r.status}`);
+  if (!r.ok) {
+    const detail = data.error_description || data.error || '';
+    throw new Error(`Constant Contact token refresh returned ${r.status}${detail ? `: ${detail}` : '. Reconnect Constant Contact and update the access/refresh token env variables.'}`);
+  }
   ccTokenState.accessToken = data.access_token || '';
   ccTokenState.refreshToken = data.refresh_token || ccTokenState.refreshToken;
   ccTokenState.expiresAt = Date.now() + Math.max(Number(data.expires_in || 0) - 300, 60) * 1000;
+  await saveStoredConstantContactTokens();
   return ccTokenState.accessToken;
 }
 
 async function constantContactAccessToken() {
+  await loadStoredConstantContactTokens();
   if (ccTokenState.accessToken && (!ccTokenState.expiresAt || Date.now() < ccTokenState.expiresAt)) {
     return ccTokenState.accessToken;
   }
