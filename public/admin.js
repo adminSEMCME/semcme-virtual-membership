@@ -207,17 +207,11 @@ async function load() {
     renderMembers(d.members || []);
     renderContent(d.libraryPrograms || []);
     renderSupport(d.support || []);
-    const databaseLabel = d.databaseType === "postgres" ? "Live Postgres database" : "temporary SQLite database";
-    const listLabel = [d.constantContactListName, d.constantContactListId].filter(Boolean).join(" / ");
-    $("#ccStatus").classList.remove("hidden");
-    $("#ccStatus").textContent = d.constantContactConfigured
-      ? `Constant Contact Virtual Members list lookup is configured${listLabel ? ` for ${listLabel}` : ""}. Database: ${databaseLabel}.`
-      : `Constant Contact lookup is not configured yet. Database: ${databaseLabel}. Add the Virtual Members contact list credentials to enable sync.`;
     const resourceCount = (d.libraryPrograms || []).reduce((sum, program) => sum + flattenResources(program).length, 0);
     $("#stats").innerHTML =
       `<div class="stat"><strong>${(d.libraryPrograms || []).length}</strong><span>program areas</span></div><div class="stat"><strong>${resourceCount}</strong><span>library items</span></div><div class="stat"><strong>${(d.members || []).length}</strong><span>members in database</span></div><div class="stat"><strong>${(d.support || []).filter((x) => x.status === "new").length}</strong><span>new questions</span></div>`;
     if (pageParams.get("cc") === "connected") {
-      $("#memberSyncStatus").textContent = "Constant Contact reconnected. Click Sync members.";
+      $("#memberSyncStatus").textContent = "Constant Contact reconnected successfully.";
       $("#memberSyncStatus").classList.add("success");
     } else if (pageParams.get("cc") === "failed") {
       $("#memberSyncStatus").textContent = "Constant Contact reconnect failed. Check that the callback URL is saved in the Constant Contact app.";
@@ -410,12 +404,8 @@ $("#syncMembers").addEventListener("click", async (e) => {
     const d = await withLoading(button, "Syncing...", () =>
       api("/api/admin/sync-members", { method: "POST" }),
     );
-    const countText =
-      d.listAllCount !== null && d.listAllCount !== undefined
-        ? ` Constant Contact list count: ${d.listAllCount} all${d.listActiveCount !== null && d.listActiveCount !== undefined ? ` / ${d.listActiveCount} active` : ""}.`
-        : "";
     status.textContent = d.configured
-      ? `Synced ${d.synced} members from Constant Contact${d.checked !== undefined ? ` (${d.checked} returned by contacts API${d.skipped ? `, ${d.skipped} skipped` : ""})` : ""}${d.listName || d.listId ? ` from ${[d.listName, d.listId].filter(Boolean).join(" / ")}` : ""}${d.databaseType ? ` using ${d.databaseType === "postgres" ? "Postgres" : "SQLite"}.` : "."}${countText}`
+      ? `Synced ${d.synced} members from Constant Contact.`
       : "Constant Contact Virtual Members list lookup is not configured yet.";
     status.classList.add("success");
     await load();
