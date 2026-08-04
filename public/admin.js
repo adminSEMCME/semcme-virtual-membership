@@ -206,9 +206,11 @@ async function load() {
     renderMembers(d.members || []);
     renderContent(d.libraryPrograms || []);
     renderSupport(d.support || []);
+    const databaseLabel = d.databaseType === "postgres" ? "Live Postgres database" : "temporary SQLite database";
+    $("#ccStatus").classList.remove("hidden");
     $("#ccStatus").textContent = d.constantContactConfigured
-      ? "Constant Contact Virtual Members list lookup is configured."
-      : "Constant Contact lookup is not configured yet. Add the Virtual Members contact list credentials to enable sync.";
+      ? `Constant Contact Virtual Members list lookup is configured. Database: ${databaseLabel}.`
+      : `Constant Contact lookup is not configured yet. Database: ${databaseLabel}. Add the Virtual Members contact list credentials to enable sync.`;
     const resourceCount = (d.libraryPrograms || []).reduce((sum, program) => sum + flattenResources(program).length, 0);
     $("#stats").innerHTML =
       `<div class="stat"><strong>${(d.libraryPrograms || []).length}</strong><span>program areas</span></div><div class="stat"><strong>${resourceCount}</strong><span>library items</span></div><div class="stat"><strong>${(d.members || []).length}</strong><span>members in database</span></div><div class="stat"><strong>${(d.support || []).filter((x) => x.status === "new").length}</strong><span>new questions</span></div>`;
@@ -400,7 +402,7 @@ $("#syncMembers").addEventListener("click", async (e) => {
       api("/api/admin/sync-members", { method: "POST" }),
     );
     status.textContent = d.configured
-      ? `Synced ${d.synced} members from Constant Contact${d.checked !== undefined ? ` (${d.checked} checked)` : ""}.`
+      ? `Synced ${d.synced} members from Constant Contact${d.checked !== undefined ? ` (${d.checked} checked${d.skipped ? `, ${d.skipped} skipped` : ""})` : ""}${d.databaseType ? ` using ${d.databaseType === "postgres" ? "Postgres" : "SQLite"}.` : "."}`
       : "Constant Contact Virtual Members list lookup is not configured yet.";
     status.classList.add("success");
     await load();
@@ -411,6 +413,14 @@ $("#syncMembers").addEventListener("click", async (e) => {
 });
 
 $("#refresh").addEventListener("click", (e) => withLoading(e.currentTarget, "Refreshing...", load));
+$("#adminLogout").addEventListener("click", async (e) => {
+  await withLoading(e.currentTarget, "Signing out...", () =>
+    api("/api/admin/logout", { method: "POST" }),
+  );
+  dashboard = null;
+  $("#dashboard").classList.add("hidden");
+  $("#adminLogin").classList.remove("hidden");
+});
 $("#confirmCancel").addEventListener("click", () => closeConfirm(false));
 $("#confirmAccept").addEventListener("click", () => closeConfirm(true));
 $("#confirmOverlay").addEventListener("click", (e) => {

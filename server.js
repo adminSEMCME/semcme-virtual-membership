@@ -907,14 +907,14 @@ async function findConstantContactListMember(email) {
 
 async function syncConstantContactMembers() {
   const result = await constantContactListContacts();
-  if (!result.configured) return { configured:false, synced:0 };
+  if (!result.configured) return { configured:false, synced:0, databaseType:db.type };
   let synced = 0;
   let skipped = 0;
   for (const record of result.records) {
     if (await upsertMemberFromContact(record)) synced += 1;
     else skipped += 1;
   }
-  return { configured:true, synced, checked:result.records.length, skipped };
+  return { configured:true, synced, checked:result.records.length, skipped, databaseType:db.type };
 }
 
 async function createMagicLink(memberRow) {
@@ -1092,6 +1092,7 @@ async function api(req, res, path) {
     if (clean(b.password,200)!==adminPassword) return json(res,401,{error:'Invalid admin login.'});
     return json(res,200,{ok:true},{'Set-Cookie':cookie('semcme_admin',sign('admin'),1)});
   }
+  if (path === '/api/admin/logout' && req.method === 'POST') return json(res,200,{ok:true},{'Set-Cookie':clearCookie('semcme_admin')});
   if (path === '/api/admin/dashboard' && req.method === 'GET') {
     if (!admin(req)) return json(res,401,{error:'Admin login required.'});
     let heroEvents = [];
@@ -1099,6 +1100,7 @@ async function api(req, res, path) {
     return json(res,200,{
       heroEvents,
       constantContactConfigured,
+      databaseType:db.type,
       registrationUrl,
       libraryPrograms:await getLibraryPrograms({ includeDisabled:true }),
       members:await db.all('SELECT * FROM members ORDER BY created_at DESC LIMIT 500'),
