@@ -702,13 +702,19 @@ await seedLibraryContent();
 async function sendEmail({to, subject, html, text=''}) {
   if (!process.env.RESEND_API_KEY) return 'not_configured';
   const payload = { from:process.env.EMAIL_FROM || 'SEMCME Virtual Membership <members@semcme.org>', to:[to], subject, html };
+  if (process.env.EMAIL_REPLY_TO || process.env.SUPPORT_EMAIL) payload.reply_to = process.env.EMAIL_REPLY_TO || process.env.SUPPORT_EMAIL;
   if (text) payload.text = text;
   const r = await fetch('https://api.resend.com/emails', {
     method:'POST',
     headers:{ Authorization:`Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type':'application/json' },
     body:JSON.stringify(payload)
   });
-  if (!r.ok) throw new Error(`Email provider returned ${r.status}`);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const detail = data.message || data.error || data.name || '';
+    throw new Error(`Email provider returned ${r.status}${detail ? `: ${detail}` : ''}`);
+  }
+  if (data.id) console.log(`Resend accepted email ${data.id} to ${to}`);
   return 'sent';
 }
 

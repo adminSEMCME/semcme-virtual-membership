@@ -340,13 +340,42 @@ a {
   font-size: 13px;
   font-weight: 600;
   margin: 12px 0 0;
-  color: #a53a27;
+  color: #9d2f22;
 }
 .form-status.success {
+  color: #146c4d;
+}
+.form-status.error {
+  color: #9d2f22;
+}
+.form-status.loading {
   color: var(--blue);
 }
 .form-status a {
   color: inherit;
+}
+.status-card {
+  display: grid;
+  gap: 6px;
+  padding: 13px 14px;
+  border: 1px solid #f0c3ba;
+  border-radius: 10px;
+  background: #fff6f4;
+}
+.status-card strong {
+  font-size: 15px;
+}
+.status-card span {
+  display: block;
+  line-height: 1.4;
+}
+.form-status.success .status-card {
+  border-color: #b7dfce;
+  background: #f0faf5;
+}
+.form-status.loading .status-card {
+  border-color: #c5d8eb;
+  background: #f3f8fc;
 }
 .library {
   background: #fff;

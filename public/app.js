@@ -29,17 +29,41 @@ let activeEvent = 0,
   carouselTimer,
   heroSyncTimer;
 
-function status(form, message, success = false) {
+function status(form, message, type = "error") {
+  const state = type === true ? "success" : type === false ? "error" : type;
   const el = form.querySelector(".form-status");
   el.innerHTML = message;
-  el.classList.toggle("success", success);
+  el.classList.toggle("success", state === "success");
+  el.classList.toggle("error", state === "error");
+  el.classList.toggle("loading", state === "loading");
+}
+
+function loginSuccessMessage(message) {
+  return `<div class="status-card">
+    <strong>Sign-in link sent</strong>
+    <span>${esc(message || "Check your email for your secure Sign-In Link.")}</span>
+    <span>This link expires in 30 minutes and can only be used once.</span>
+    <span>Please check your spam or junk folder if it does not appear in your inbox.</span>
+  </div>`;
+}
+
+function loginErrorMessage(message, registrationUrl = "") {
+  return `<div class="status-card">
+    <strong>Unable to send sign-in link</strong>
+    <span>${esc(message)}</span>
+    ${
+      registrationUrl
+        ? `<span><a href="${esc(registrationUrl)}" target="_blank" rel="noopener">Register for Virtual Membership</a>, then sign in again with the same email address.</span>`
+        : ""
+    }
+  </div>`;
 }
 $("#loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const form = e.currentTarget,
     button = form.querySelector("button[type=submit]");
   button.disabled = true;
-  status(form, "Checking membership…");
+  status(form, '<div class="status-card"><strong>Checking membership</strong><span>Please wait while we verify your access.</span></div>', "loading");
   try {
     const result = await api("/api/auth/request-link", {
       method: "POST",
@@ -48,18 +72,12 @@ $("#loginForm").addEventListener("submit", async (e) => {
     status(
       form,
       result.emailSent
-        ? esc(
-            result.message ||
-              "Success. Check your email for a secure Sign-In Link. It expires in 30 minutes, can only be used once, and may take up to 3 minutes to arrive. Please check your spam or junk folder if it does not appear in your inbox.",
-          )
-        : `Email delivery is not configured locally. This dev Sign-In Link expires in 30 minutes and can only be used once. <a href="${esc(result.signInUrl)}">Open your dev sign-in link</a>.`,
-      true,
+        ? loginSuccessMessage("It may take up to 3 minutes to arrive.")
+        : `<div class="status-card"><strong>Local sign-in link ready</strong><span>Email delivery is not configured locally.</span><span>This dev Sign-In Link expires in 30 minutes and can only be used once.</span><span><a href="${esc(result.signInUrl)}">Open your dev sign-in link</a></span></div>`,
+      "success",
     );
   } catch (x) {
-    const registerLink = x.data?.registrationUrl
-      ? ` <a href="${esc(x.data.registrationUrl)}" target="_blank" rel="noopener">Register for Virtual Membership</a>, then sign in again.`
-      : "";
-    status(form, `${esc(x.message)}${registerLink}`);
+    status(form, loginErrorMessage(x.message, x.data?.registrationUrl), "error");
   } finally {
     button.disabled = false;
   }
@@ -273,7 +291,7 @@ $$("[data-open-support],#supportTop").forEach((b) =>
 $("#supportForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const form = e.currentTarget;
-  status(form, "Sending…");
+  status(form, '<div class="status-card"><strong>Sending message</strong><span>Please wait while we send your question.</span></div>', "loading");
   try {
     const r = await api("/api/support", {
       method: "POST",
@@ -283,12 +301,12 @@ $("#supportForm").addEventListener("submit", async (e) => {
     status(
       form,
       r.delivered
-        ? "Your question was sent to SEMCME staff."
-        : "Your question was saved. Email routing is not configured in this preview.",
+        ? '<div class="status-card"><strong>Question sent</strong><span>Your question was sent to SEMCME staff.</span></div>'
+        : '<div class="status-card"><strong>Question saved</strong><span>Email routing is not configured in this preview.</span></div>',
       true,
     );
   } catch (x) {
-    status(form, x.message);
+    status(form, loginErrorMessage(x.message));
   }
 });
 
