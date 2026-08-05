@@ -903,7 +903,8 @@ dialog::backdrop {
   .header-actions {
     gap: 3px;
   }
-  .header-actions button {
+  .header-actions button,
+  .header-actions a {
     font-size: 12px;
   }
   .welcome-shell {

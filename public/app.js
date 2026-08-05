@@ -236,6 +236,7 @@ async function loadLibrary() {
     library = await api("/api/library");
     $("#welcome").classList.add("hidden");
     $("#library").classList.remove("hidden");
+    $("#registerTop").classList.add("hidden");
     $("#logout").classList.remove("hidden");
     $("#supportTop").classList.remove("hidden");
     renderLibrary();
@@ -292,4 +293,5 @@ $("#supportForm").addEventListener("submit", async (e) => {
 });
 
 const config = await api("/api/config");
+if (config.registrationUrl) $("#registerTop").href = config.registrationUrl;
 if (!(await verifyMagicLink()) && config.authenticated) await loadLibrary();
