@@ -1137,6 +1137,38 @@ async function constantContactSegmentContacts(segmentId) {
   return records;
 }
 
+async function updateMemberInstitution(email, institution) {
+  const cleanEmail = clean(email, 200).toLowerCase();
+  const cleanInstitution = clean(institution, 200);
+  if (!emailOk(cleanEmail) || !cleanInstitution) return null;
+  await db.run(
+    'UPDATE members SET institution=$1, updated_at=CURRENT_TIMESTAMP WHERE lower(email)=lower($2)',
+    [cleanInstitution, cleanEmail]
+  );
+  return db.get('SELECT * FROM members WHERE lower(email)=lower($1)', [cleanEmail]);
+}
+
+async function findInstitutionForEmailFromSegments(email) {
+  const cleanEmail = clean(email, 200).toLowerCase();
+  if (!emailOk(cleanEmail)) return '';
+  const segments = await constantContactSegments();
+  const institutionNames = await getVirtualInstitutionSegmentNames();
+
+  for (const segment of segments) {
+    const segmentId = clean(segment.segment_id || segment.id || '', 160);
+    const institution = institutionFromSegmentName(segment.name || segment.segment_name || '', institutionNames);
+    if (!segmentId || !institution) continue;
+    const contacts = await constantContactSegmentContacts(segmentId);
+    if (contacts.some((contact) => extractEmail(contact) === cleanEmail)) return institution;
+  }
+  return '';
+}
+
+async function syncMemberInstitutionFromSegments(email) {
+  const institution = await findInstitutionForEmailFromSegments(email);
+  return institution ? updateMemberInstitution(email, institution) : null;
+}
+
 async function syncMemberInstitutionsFromSegments() {
   const segments = await constantContactSegments();
   const institutionNames = await getVirtualInstitutionSegmentNames();
@@ -1160,10 +1192,7 @@ async function syncMemberInstitutionsFromSegments() {
       const existing = await db.get('SELECT institution FROM members WHERE lower(email)=lower($1)', [email]);
       if (!existing) continue;
       if (clean(existing.institution || '', 200) === institution) continue;
-      await db.run(
-        'UPDATE members SET institution=$1, updated_at=CURRENT_TIMESTAMP WHERE lower(email)=lower($2)',
-        [institution, email]
-      );
+      await updateMemberInstitution(email, institution);
       updated += 1;
     }
   }
@@ -1222,7 +1251,16 @@ async function findConstantContactListMember(email) {
   const result = await constantContactListContacts({ email });
   if (!result.configured) return { configured:false, member:null };
   const match = result.records.find(r => extractEmail(r) === email);
-  return { configured:true, member: match ? await upsertMemberFromContact(await constantContactContactDetail(match)) : null };
+  if (!match) return { configured:true, member:null };
+  let member = await upsertMemberFromContact(await constantContactContactDetail(match));
+  if (member && !member.institution) {
+    try {
+      member = await syncMemberInstitutionFromSegments(email) || member;
+    } catch (e) {
+      console.error(e.message);
+    }
+  }
+  return { configured:true, member };
 }
 
 async function syncConstantContactMembers() {
@@ -1272,6 +1310,13 @@ async function createMagicLink(memberRow) {
 async function requestMagicLink(email) {
   let row = await db.get('SELECT * FROM members WHERE email=$1', [email]);
   let source = row ? 'database' : '';
+  if (row && !row.institution && constantContactConfigured) {
+    try {
+      row = await syncMemberInstitutionFromSegments(email) || row;
+    } catch (e) {
+      console.error(e.message);
+    }
+  }
   if (!row) {
     const checked = await findConstantContactListMember(email);
     if (!checked.configured) throw Object.assign(new Error('Constant Contact list lookup is not configured for Virtual Membership yet.'), { status:503 });
