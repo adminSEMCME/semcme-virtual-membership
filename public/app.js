@@ -38,27 +38,29 @@ function status(form, message, type = "error") {
   el.classList.toggle("loading", state === "loading");
 }
 
-function loginSuccessMessage(message, lines = []) {
-  const detailLines = lines.length
-    ? lines
-    : [
-        message || "It may take up to 3 minutes to arrive.",
-        "This link expires in 30 minutes and can only be used once.",
-        "Please check your spam or junk folder if it does not appear in your inbox.",
-      ];
+function splitSentences(value) {
+  return String(value || "")
+    .split(/(?<=\.)\s+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function loginSuccessMessage(message) {
+  const detailLines = splitSentences(
+    message ||
+      "Check your email for a secure Sign-In Link. Please allow up to 3 minutes for the Sign-In Link to arrive before requesting another one.",
+  );
   return `<div class="status-card">
-    <strong>Sign-in link sent</strong>
     ${detailLines.map((line) => `<span>${esc(line)}</span>`).join("")}
   </div>`;
 }
 
 function loginErrorMessage(message, registrationUrl = "") {
   return `<div class="status-card">
-    <strong>Unable to send sign-in link</strong>
     <span>${esc(message)}</span>
     ${
       registrationUrl
-        ? `<span><a href="${esc(registrationUrl)}" target="_blank" rel="noopener">Register for Virtual Membership</a>, then sign in again with the same email address.</span>`
+        ? `<span><a href="${esc(registrationUrl)}" target="_blank" rel="noopener">Register here</a>, then sign in again.</span>`
         : ""
     }
   </div>`;
@@ -77,7 +79,7 @@ $("#loginForm").addEventListener("submit", async (e) => {
     status(
       form,
       result.emailSent
-        ? loginSuccessMessage(result.message, result.messageLines || [])
+        ? loginSuccessMessage(result.message)
         : `<div class="status-card"><strong>Local sign-in link ready</strong><span>Email delivery is not configured locally.</span><span>This dev Sign-In Link expires in 30 minutes and can only be used once.</span><span><a href="${esc(result.signInUrl)}">Open your dev sign-in link</a></span></div>`,
       "success",
     );

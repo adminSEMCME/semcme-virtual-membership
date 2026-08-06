@@ -699,10 +699,47 @@ async function deleteLibraryResource(id) {
 
 await seedLibraryContent();
 
+let smtpTransporter = null;
+async function getSmtpTransporter() {
+  if (smtpTransporter) return smtpTransporter;
+  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) return null;
+  const nodemailerModule = await import('nodemailer');
+  const nodemailer = nodemailerModule.default || nodemailerModule;
+  smtpTransporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT || 587),
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    }
+  });
+  return smtpTransporter;
+}
+
 async function sendEmail({to, subject, html, text=''}) {
+  const from = process.env.SMTP_FROM || process.env.EMAIL_FROM || 'SEMCME Virtual Membership <members@semcme.org>';
+  const replyTo = process.env.EMAIL_REPLY_TO || process.env.SUPPORT_EMAIL || '';
+  const transporter = await getSmtpTransporter();
+  if (transporter) {
+    await transporter.sendMail({
+      from,
+      to,
+      subject,
+      text,
+      html,
+      replyTo: replyTo || undefined,
+      headers: {
+        'X-Auto-Response-Suppress': 'All'
+      }
+    });
+    console.log(`SMTP accepted email to ${to}`);
+    return 'sent';
+  }
+
   if (!process.env.RESEND_API_KEY) return 'not_configured';
-  const payload = { from:process.env.EMAIL_FROM || 'SEMCME Virtual Membership <members@semcme.org>', to:[to], subject, html };
-  if (process.env.EMAIL_REPLY_TO || process.env.SUPPORT_EMAIL) payload.reply_to = process.env.EMAIL_REPLY_TO || process.env.SUPPORT_EMAIL;
+  const payload = { from, to:[to], subject, html };
+  if (replyTo) payload.reply_to = replyTo;
   if (text) payload.text = text;
   const r = await fetch('https://api.resend.com/emails', {
     method:'POST',
@@ -1343,13 +1380,7 @@ async function requestMagicLink(email) {
     emailSent: mail === 'sent',
     source,
     signInUrl: mail === 'not_configured' ? signInUrl : undefined,
-    message: 'Sign-in link sent.',
-    messageTitle: 'Sign-in link sent',
-    messageLines: [
-      'It may take up to 3 minutes to arrive.',
-      'This link expires in 30 minutes and can only be used once.',
-      'Please check your spam or junk folder if it does not appear in your inbox.'
-    ]
+    message: 'Check your email for a secure Sign-In Link. Please allow up to 3 minutes for the Sign-In Link to arrive before requesting another one.'
   };
 }
 

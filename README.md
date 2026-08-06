@@ -46,14 +46,20 @@ For Vercel env-only deployments, use a long-lived refresh token. Rotating refres
 
 ### Email
 
-Verify a sending domain with Resend and set:
+Verify a sending domain with Resend and set SMTP delivery to match the other SEMCME projects:
 
 ```text
-RESEND_API_KEY=...
-EMAIL_FROM=SEMCME Virtual Membership <members@your-domain.org>
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=resend
+SMTP_PASS=...
+SMTP_FROM=SEMCME Virtual Membership <members@mail.semcme.org>
 SUPPORT_EMAIL=cszydlowski@semcme.org
 BASE_URL=https://virtual.semcme.org
 ```
+
+`RESEND_API_KEY` and `EMAIL_FROM` can remain configured as a fallback, but SMTP is preferred for production.
 
 If email is not configured in local development, the sign-in link is shown on screen for testing.
 
@@ -94,8 +100,14 @@ CONSTANT_CONTACT_CLIENT_SECRET=...
 CONSTANT_CONTACT_REFRESH_TOKEN=...
 CONSTANT_CONTACT_VIRTUAL_MEMBERSHIP_LIST_ID=bd3e4866-8aaf-11f1-9615-02420a320002
 CONSTANT_CONTACT_VIRTUAL_MEMBERSHIP_LIST_NAME=SEMCME - Virtual Members
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=resend
+SMTP_PASS=...
+SMTP_FROM=SEMCME Virtual Membership <members@mail.semcme.org>
 RESEND_API_KEY=...
-EMAIL_FROM=SEMCME Virtual Membership <members@your-domain.org>
+EMAIL_FROM=SEMCME Virtual Membership <members@mail.semcme.org>
 SUPPORT_EMAIL=cszydlowski@semcme.org
 SEMCME_HOME_URL=https://semcme.org/
 SEMCME_HERO_REFRESH_MS=86400000
