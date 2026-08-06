@@ -38,12 +38,17 @@ function status(form, message, type = "error") {
   el.classList.toggle("loading", state === "loading");
 }
 
-function loginSuccessMessage(message) {
+function loginSuccessMessage(message, lines = []) {
+  const detailLines = lines.length
+    ? lines
+    : [
+        message || "It may take up to 3 minutes to arrive.",
+        "This link expires in 30 minutes and can only be used once.",
+        "Please check your spam or junk folder if it does not appear in your inbox.",
+      ];
   return `<div class="status-card">
     <strong>Sign-in link sent</strong>
-    <span>${esc(message || "Check your email for your secure Sign-In Link.")}</span>
-    <span>This link expires in 30 minutes and can only be used once.</span>
-    <span>Please check your spam or junk folder if it does not appear in your inbox.</span>
+    ${detailLines.map((line) => `<span>${esc(line)}</span>`).join("")}
   </div>`;
 }
 
@@ -72,7 +77,7 @@ $("#loginForm").addEventListener("submit", async (e) => {
     status(
       form,
       result.emailSent
-        ? loginSuccessMessage("It may take up to 3 minutes to arrive.")
+        ? loginSuccessMessage(result.message, result.messageLines || [])
         : `<div class="status-card"><strong>Local sign-in link ready</strong><span>Email delivery is not configured locally.</span><span>This dev Sign-In Link expires in 30 minutes and can only be used once.</span><span><a href="${esc(result.signInUrl)}">Open your dev sign-in link</a></span></div>`,
       "success",
     );

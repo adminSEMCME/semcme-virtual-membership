@@ -1343,7 +1343,13 @@ async function requestMagicLink(email) {
     emailSent: mail === 'sent',
     source,
     signInUrl: mail === 'not_configured' ? signInUrl : undefined,
-    message: 'Success. Check your email for a secure Sign-In Link. It expires in 30 minutes, can only be used once, and may take up to 3 minutes to arrive. Please check your spam or junk folder if it does not appear in your inbox.'
+    message: 'Sign-in link sent.',
+    messageTitle: 'Sign-in link sent',
+    messageLines: [
+      'It may take up to 3 minutes to arrive.',
+      'This link expires in 30 minutes and can only be used once.',
+      'Please check your spam or junk folder if it does not appear in your inbox.'
+    ]
   };
 }
 
