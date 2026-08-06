@@ -717,9 +717,8 @@ async function getSmtpTransporter() {
   return smtpTransporter;
 }
 
-async function sendEmail({to, subject, html, text=''}) {
+async function sendEmail({to, subject, html, text='', attachments=[], replyTo=''}) {
   const from = process.env.SMTP_FROM || process.env.EMAIL_FROM || 'SEMCME Virtual Membership <members@semcme.org>';
-  const replyTo = process.env.EMAIL_REPLY_TO || process.env.SUPPORT_EMAIL || '';
   const transporter = await getSmtpTransporter();
   if (transporter) {
     await transporter.sendMail({
@@ -728,6 +727,7 @@ async function sendEmail({to, subject, html, text=''}) {
       subject,
       text,
       html,
+      attachments,
       replyTo: replyTo || undefined,
       headers: {
         'X-Auto-Response-Suppress': 'All'
@@ -757,7 +757,7 @@ async function sendEmail({to, subject, html, text=''}) {
 
 function buildMagicLinkEmail(signInUrl) {
   const safeSignInUrl = escapeHtml(signInUrl);
-  const logoUrl = `${magicLinkBaseUrl()}/semcme-logo.png`;
+  const logoCid = 'semcme-logo@virtual-membership';
   const subject = 'Your SEMCME Virtual Membership Sign-In Link';
   const text = [
     'Use this secure Sign-In Link to access your SEMCME Virtual Membership program materials:',
@@ -790,7 +790,7 @@ function buildMagicLinkEmail(signInUrl) {
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:720px;background:#ffffff;border-collapse:collapse;">
                 <tr>
                   <td align="center" style="padding:0 0 38px;">
-                    <img src="${escapeHtml(logoUrl)}" width="292" alt="Southeast Michigan Center for Medical Education" style="display:block;width:292px;max-width:100%;height:auto;border:0;">
+                    <img src="cid:${logoCid}" width="292" alt="Southeast Michigan Center for Medical Education" style="display:block;width:292px;max-width:100%;height:auto;border:0;">
                   </td>
                 </tr>
                 <tr>
@@ -835,7 +835,18 @@ function buildMagicLinkEmail(signInUrl) {
       </body>
     </html>
   `;
-  return { subject, text, html };
+  return {
+    subject,
+    text,
+    html,
+    attachments: [
+      {
+        filename: 'semcme-logo.png',
+        path: join(root, 'public', 'semcme-logo.png'),
+        cid: logoCid
+      }
+    ]
+  };
 }
 
 async function upsertMemberFromContact(contact, source='constant_contact_list') {
@@ -1470,7 +1481,7 @@ function parseSemcmeVirtualSlides(html) {
 }
 
 async function api(req, res, path) {
-  if (path === '/api/config' && req.method === 'GET') return json(res,200,{ authenticated:member(req), emailConfigured:Boolean(process.env.RESEND_API_KEY), constantContactConfigured, registrationUrl });
+  if (path === '/api/config' && req.method === 'GET') return json(res,200,{ authenticated:member(req), emailConfigured:Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) || Boolean(process.env.RESEND_API_KEY), constantContactConfigured, registrationUrl });
   if (path === '/api/auth/request-link' && req.method === 'POST') {
     const b=await readBody(req); const email=clean(b.email,200).toLowerCase();
     if (!emailOk(email)) return json(res,400,{error:'Enter a valid email address.'});
