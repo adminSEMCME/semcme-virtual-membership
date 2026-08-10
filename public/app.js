@@ -80,7 +80,7 @@ $("#loginForm").addEventListener("submit", async (e) => {
       form,
       result.emailSent
         ? loginSuccessMessage(result.message)
-        : `<div class="status-card"><strong>Local sign-in link ready</strong><span>Email delivery is not configured locally.</span><span>This dev Sign-In Link expires in 30 minutes and can only be used once.</span><span><a href="${esc(result.signInUrl)}">Open your dev sign-in link</a></span></div>`,
+        : `<div class="status-card"><strong>Local sign-in link ready</strong><span>Email delivery is not configured locally.</span><span>This dev Sign-In Link expires in 15 minutes and can only be used once.</span><span><a href="${esc(result.signInUrl)}">Open your dev sign-in link</a></span></div>`,
       "success",
     );
   } catch (x) {

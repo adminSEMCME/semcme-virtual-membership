@@ -41,7 +41,7 @@ const ccBase = 'https://api.cc.email/v3';
 const semcmeHomeUrl = process.env.SEMCME_HOME_URL || 'https://semcme.org/';
 const oneDayMs = 24 * 60 * 60 * 1000;
 const semcmeHeroRefreshMs = Math.max(Number(process.env.SEMCME_HERO_REFRESH_MS || oneDayMs), oneDayMs);
-const magicLinkTtlMs = 30 * 60 * 1000;
+const magicLinkTtlMs = 15 * 60 * 1000;
 const ccAccessToken = process.env.CONSTANT_CONTACT_ACCESS_TOKEN || '';
 const ccClientId = process.env.CONSTANT_CONTACT_CLIENT_ID || '';
 const ccClientSecret = process.env.CONSTANT_CONTACT_CLIENT_SECRET || '';
@@ -764,7 +764,7 @@ function buildMagicLinkEmail(signInUrl) {
     '',
     signInUrl,
     '',
-    'This Sign-In Link expires in 30 minutes and can only be used once.',
+    'This Sign-In Link expires in 15 minutes and can only be used once.',
     '',
     'If you did not request this Sign-In Link, you can ignore this email.',
     '',
@@ -782,7 +782,7 @@ function buildMagicLinkEmail(signInUrl) {
       </head>
       <body style="margin:0;padding:0;background:#ffffff;color:#262626;font-family:Arial,Helvetica,sans-serif;">
         <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
-          Your secure SEMCME Virtual Membership Sign-In Link expires in 30 minutes.
+          Your secure SEMCME Virtual Membership Sign-In Link expires in 15 minutes.
         </div>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-collapse:collapse;">
           <tr>
@@ -807,7 +807,7 @@ function buildMagicLinkEmail(signInUrl) {
                       Use the secure Sign-In Link below to sign in to the SEMCME Virtual Membership program materials.
                     </p>
                     <p style="margin:0;color:#262626;font-size:20px;line-height:1.5;">
-                      This Sign-In Link expires in 30 minutes and can only be used once.
+                      This Sign-In Link expires in 15 minutes and can only be used once.
                     </p>
                   </td>
                 </tr>
@@ -1492,7 +1492,7 @@ async function api(req, res, path) {
     const b=await readBody(req); const token=clean(b.token,500);
     const row = token ? await verifyMagicToken(token) : null;
     if (!row) return json(res,401,{error:'That sign-in link is invalid or expired.'});
-    return json(res,200,{ok:true,email:row.email},{'Set-Cookie':cookie('semcme_member',sign(`member:${row.id}`))});
+    return json(res,200,{ok:true,email:row.email},{'Set-Cookie':cookie('semcme_member',sign(`member:${row.id}`),1)});
   }
   if (path === '/api/logout' && req.method === 'POST') return json(res,200,{ok:true},{'Set-Cookie':clearCookie('semcme_member')});
   if (path === '/api/library' && req.method === 'GET') {
