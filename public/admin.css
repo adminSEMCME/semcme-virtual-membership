@@ -660,12 +660,18 @@ button.is-loading::after {
 .table-wrap {
   overflow: auto;
 }
+.members-table-wrap {
+  max-height: min(1040px, 72vh);
+}
 table {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
 }
 th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   text-align: left;
   background: #eef3f4;
   color: #506673;
