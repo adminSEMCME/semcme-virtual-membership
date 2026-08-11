@@ -136,8 +136,7 @@ a {
   border-left: 1px solid var(--line);
   padding-left: 15px;
 }
-.text-button,
-.help-link {
+.text-button {
   border: 0;
   background: none;
   color: var(--blue);
@@ -147,9 +146,12 @@ a {
   padding: 8px;
   text-transform: uppercase;
 }
-.text-button:hover,
-.help-link:hover {
-  text-decoration: underline;
+.text-button {
+  text-decoration: none;
+}
+.text-button:hover {
+  color: var(--gold);
+  text-decoration: none;
 }
 .library-bar {
   height: 43px;
@@ -363,7 +365,16 @@ a {
 .help-link {
   display: block;
   margin: 16px auto 0;
+  border: 0;
+  background: none;
+  color: var(--blue);
   font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px;
+}
+.help-link:hover {
+  text-decoration: underline;
 }
 .privacy-note {
   font-size: 11px;
