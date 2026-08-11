@@ -61,39 +61,39 @@ a {
   border-bottom: 5px solid var(--blue);
 }
 .utility-bar {
-  min-height: 56px;
+  min-height: 42px;
   background: var(--blue);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 24px;
-  padding: 10px max(30px, calc((100vw - 1280px) / 2));
+  padding: 6px max(30px, calc((100vw - 1280px) / 2));
 }
 .utility-bar p {
   margin: 0;
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 400;
 }
 .utility-bar a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 16px;
+  padding: 8px 14px;
   border: 1px solid rgba(255, 255, 255, 0.86);
   border-radius: 3px;
   color: #fff;
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
   text-decoration: none;
 }
 .site-header {
-  min-height: 110px;
+  min-height: 96px;
   background: #fff;
   display: flex;
   align-items: center;
-  padding: 18px max(30px, calc((100vw - 1280px) / 2));
+  padding: 14px max(30px, calc((100vw - 1280px) / 2));
   position: relative;
   gap: 28px;
 }
@@ -107,7 +107,7 @@ a {
   display: block;
   width: 100%;
   height: auto;
-  max-height: 76px;
+  max-height: 66px;
   object-fit: contain;
   object-position: left center;
 }
@@ -173,7 +173,7 @@ a {
   padding-left: 18px;
 }
 .welcome-shell {
-  min-height: calc(100vh - 171px);
+  min-height: calc(100vh - 143px);
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(440px, 0.85fr);
   background: var(--blue);
@@ -958,8 +958,8 @@ dialog::backdrop {
 @media (max-width: 620px) {
   .utility-bar {
     justify-content: center;
-    min-height: 56px;
-    padding: 10px 16px;
+    min-height: 42px;
+    padding: 6px 16px;
   }
   .utility-bar p {
     display: none;
@@ -979,7 +979,7 @@ dialog::backdrop {
     font-size: 12px;
   }
   .welcome-shell {
-    min-height: calc(100vh - 157px);
+    min-height: calc(100vh - 143px);
   }
   .welcome-copy {
     padding-top: 52px;
@@ -1049,7 +1049,7 @@ dialog::backdrop {
   }
 }
 .welcome-shell {
-  min-height: calc(100vh - 171px);
+  min-height: calc(100vh - 143px);
 }
 .feature-banner {
   position: relative;
@@ -1149,7 +1149,7 @@ dialog::backdrop {
     display: none;
   }
   .welcome-shell {
-    min-height: calc(100vh - 157px);
+    min-height: calc(100vh - 143px);
   }
   .carousel-controls {
     right: 20px;
