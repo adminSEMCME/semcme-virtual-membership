@@ -22,7 +22,13 @@ let dashboard = null;
 let selectedProgramSlug = "";
 let selectedResourceId = "";
 let confirmResolver = null;
+let adminLoadingCount = 0;
 const pageParams = new URLSearchParams(window.location.search);
+
+function setAdminPageLoading(active) {
+  adminLoadingCount = Math.max(0, adminLoadingCount + (active ? 1 : -1));
+  document.body.classList.toggle("is-loading", adminLoadingCount > 0);
+}
 
 function formatDate(value) {
   if (!value) return "-";
@@ -70,6 +76,7 @@ function exportMembers() {
 
 async function withLoading(button, label, task) {
   const original = button.textContent;
+  setAdminPageLoading(true);
   button.disabled = true;
   button.classList.add("is-loading");
   button.textContent = label;
@@ -79,6 +86,7 @@ async function withLoading(button, label, task) {
     button.disabled = false;
     button.classList.remove("is-loading");
     button.textContent = original;
+    setAdminPageLoading(false);
   }
 }
 
@@ -463,7 +471,12 @@ $("#syncMembers").addEventListener("click", async (e) => {
   }
 });
 
-$("#exportMembers").addEventListener("click", exportMembers);
+$("#exportMembers").addEventListener("click", (e) => {
+  withLoading(e.currentTarget, "Exporting...", async () => exportMembers()).catch((x) => {
+    $("#memberSyncStatus").textContent = x.message;
+    $("#memberSyncStatus").classList.remove("success");
+  });
+});
 
 $("#institutionSegmentForm").addEventListener("submit", async (e) => {
   e.preventDefault();

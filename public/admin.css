@@ -1,6 +1,16 @@
 .admin-body {
   background: #eef3f4;
 }
+
+.admin-body.is-loading,
+.admin-body.is-loading * {
+  cursor: wait !important;
+}
+
+.admin-body button:disabled {
+  cursor: wait;
+}
+
 .admin-body button,
 .admin-body [role="button"],
 .admin-body .outline-button {
@@ -572,6 +582,14 @@ button.is-loading::after {
 .table-panel {
   padding: 0;
   overflow: hidden;
+}
+
+.members-panel {
+  overflow: visible;
+}
+
+.members-panel .table-wrap {
+  overflow: auto;
 }
 .table-panel h2 {
   margin: 0;
