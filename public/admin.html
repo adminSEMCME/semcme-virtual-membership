@@ -56,8 +56,8 @@
             <h1>Virtual Membership</h1>
           </div>
           <div class="admin-actions">
-            <button id="refresh" class="outline-button">Refresh data</button>
-            <button id="adminLogout" class="outline-button" type="button">
+            <button id="refresh" class="outline-button" data-tooltip="Reload members, content, support requests, and carousel data.">Refresh data</button>
+            <button id="adminLogout" class="outline-button" type="button" data-tooltip="Sign out of the staff admin page.">
               Sign out
             </button>
           </div>
@@ -107,7 +107,7 @@
                 <div class="editor-title">
                   <span class="step-badge">Step 2</span>
                   <h3>Choose or edit a program area</h3>
-                  <button id="newProgram" class="outline-button" type="button">
+                  <button id="newProgram" class="outline-button" type="button" data-tooltip="Clear the form to create a new program area.">
                     New program
                   </button>
                 </div>
@@ -115,7 +115,7 @@
                   Program areas are the categories in the member sidebar. Most
                   updates only require choosing an existing program here.
                 </p>
-                <label class="primary-choice"
+                <label class="primary-choice" data-tooltip="Choose the member sidebar category you want to review or edit."
                   >Select program<select id="programEditorSelect"></select
                 ></label>
                 <form id="programForm" class="field-grid">
@@ -138,8 +138,8 @@
                     ><input name="enabled" type="checkbox" checked /> Show on member site</label
                   >
                   <div class="form-actions wide">
-                    <button class="primary-button" type="submit">Save program</button>
-                    <button id="deleteProgram" class="danger-button" type="button">
+                    <button class="primary-button" type="submit" data-tooltip="Save changes to this program area.">Save program</button>
+                    <button id="deleteProgram" class="danger-button" type="button" data-tooltip="Delete this program area after confirmation.">
                       Delete program
                     </button>
                   </div>
@@ -149,7 +149,7 @@
                 <div class="editor-title">
                   <span class="step-badge">Step 3</span>
                   <h3>Add or edit one item</h3>
-                  <button id="newResource" class="outline-button" type="button">
+                  <button id="newResource" class="outline-button" type="button" data-tooltip="Clear the form to create a new library item.">
                     New item
                   </button>
                 </div>
@@ -160,14 +160,14 @@
                 </p>
                 <form id="resourceForm" class="field-grid">
                   <input name="id" type="hidden" />
-                  <label class="primary-choice"
+                  <label class="primary-choice" data-tooltip="Choose which list this item appears in on the member site."
                     >Section<select name="section" required>
                       <option value="upcoming">Upcoming programs</option>
                       <option value="current">Current & previous academic year</option>
                       <option value="archives">Archive</option>
                     </select><small>Controls which list this item appears in.</small></label
                   >
-                  <label
+                  <label data-tooltip="Controls the visible label and how this item is displayed."
                     >Type<select name="type">
                       <option value="recording">Recording</option>
                       <option value="playlist">YouTube playlist</option>
@@ -175,10 +175,10 @@
                       <option value="resource">Resource / link</option>
                     </select><small>Controls the label and display style.</small></label
                   >
-                  <label class="wide"
+                  <label class="wide" data-tooltip="Clickable title members will see."
                     >Title<input name="title" required
                   /><small>The clickable title members will see.</small></label>
-                  <label class="wide"
+                  <label class="wide" data-tooltip="Destination link for the video, playlist, PDF, registration, or resource."
                     >URL<input name="url" type="url" required placeholder="https://..."
                   /><small>Use a YouTube link for recordings/playlists or a full registration/resource URL.</small></label>
                   <label
@@ -207,8 +207,8 @@
                     on YouTube.
                   </p>
                   <div class="form-actions wide">
-                    <button class="primary-button" type="submit">Save item</button>
-                    <button id="deleteResource" class="danger-button" type="button">
+                    <button class="primary-button" type="submit" data-tooltip="Save changes to this library item.">Save item</button>
+                    <button id="deleteResource" class="danger-button" type="button" data-tooltip="Delete this library item after confirmation.">
                       Delete item
                     </button>
                   </div>
@@ -226,7 +226,7 @@
                   “virtual” or “virtually.”
                 </p>
               </div>
-              <button id="syncEvents" class="outline-button" type="button">
+              <button id="syncEvents" class="outline-button" type="button" data-tooltip="Refresh the homepage carousel programs from SEMCME.org.">
                 Refresh programs
               </button>
             </div>
@@ -240,11 +240,14 @@
                 <p id="memberSyncStatus" class="form-status"></p>
               </div>
               <div class="member-actions">
-                <a id="connectConstantContact" class="outline-button" href="/api/admin/constant-contact/connect">
+                <a id="connectConstantContact" class="outline-button" href="/api/admin/constant-contact/connect" data-tooltip="Reconnect Constant Contact if syncing members stops working.">
                   Reconnect Constant Contact
                 </a>
-                <button id="syncMembers" class="outline-button" type="button">
+                <button id="syncMembers" class="outline-button" type="button" data-tooltip="Pull members from the Constant Contact list and update institution labels from configured segments.">
                   Sync members
+                </button>
+                <button id="exportMembers" class="outline-button" type="button" data-tooltip="Download the current members table as a CSV file.">
+                  Export CSV
                 </button>
               </div>
             </div>
@@ -261,13 +264,13 @@
                 </p>
               </div>
               <form id="institutionSegmentForm">
-                <label
+                <label data-tooltip="Type only the institution portion of the matching Constant Contact segment name."
                   >Institution name<input
                     name="name"
                     placeholder="NON-SEMCME"
                     autocomplete="off" /></label
                 >
-                <button class="outline-button" type="submit">Add institution</button>
+                <button class="outline-button" type="submit" data-tooltip="Add an institution name to the segment checker list.">Add institution</button>
               </form>
               <div class="segment-list-block">
                 <strong>Currently checked</strong>

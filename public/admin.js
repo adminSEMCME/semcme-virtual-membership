@@ -32,6 +32,42 @@ function formatDate(value) {
   return Number.isNaN(fallback.getTime()) ? "-" : fallback.toLocaleDateString();
 }
 
+function csvCell(value) {
+  const text = String(value ?? "").replace(/\r?\n/g, " ").trim();
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function downloadCsv(filename, rows) {
+  const blob = new Blob([rows.map((row) => row.map(csvCell).join(",")).join("\n")], {
+    type: "text/csv;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportMembers() {
+  const members = dashboard?.members || [];
+  const rows = [
+    ["Name", "Email", "Institution", "Source", "Date"],
+    ...members.map((member) => [
+      member.name || "",
+      member.email || "",
+      member.institution || "",
+      member.cc_status || member.source || "",
+      formatDate(member.created_at || member.updated_at || member.last_cc_sync_at),
+    ]),
+  ];
+  downloadCsv("virtual-membership-members.csv", rows);
+  $("#memberSyncStatus").textContent = `Exported ${members.length} member${members.length === 1 ? "" : "s"}.`;
+  $("#memberSyncStatus").classList.add("success");
+}
+
 async function withLoading(button, label, task) {
   const original = button.textContent;
   button.disabled = true;
@@ -426,6 +462,8 @@ $("#syncMembers").addEventListener("click", async (e) => {
     status.classList.remove("success");
   }
 });
+
+$("#exportMembers").addEventListener("click", exportMembers);
 
 $("#institutionSegmentForm").addEventListener("submit", async (e) => {
   e.preventDefault();

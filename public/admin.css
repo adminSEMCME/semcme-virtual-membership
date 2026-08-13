@@ -88,6 +88,33 @@
 .admin-panel select {
   height: 42px;
 }
+
+[data-tooltip] {
+  position: relative;
+}
+
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+  position: absolute;
+  z-index: 50;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  width: max-content;
+  max-width: 280px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: #17212b;
+  color: #fff;
+  content: attr(data-tooltip);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  text-transform: none;
+  transform: translateX(-50%);
+  white-space: normal;
+  pointer-events: none;
+}
 .admin-login label {
   margin: 0;
   font-size: 15px;

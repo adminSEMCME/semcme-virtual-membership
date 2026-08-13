@@ -140,8 +140,8 @@ a {
   border: 0;
   background: none;
   color: var(--blue);
-  font-size: 16px;
-  font-weight: 900;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
   padding: 8px;
   text-transform: uppercase;
