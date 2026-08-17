@@ -203,6 +203,12 @@ function fillResourceForm(resource = null) {
   form.embedEnabled.checked = resource?.embed !== false;
 }
 
+function scrollToResourceEditor() {
+  requestAnimationFrame(() => {
+    $("#resourceEditor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
 function renderProgramSelect(programs) {
   $("#programEditorSelect").innerHTML = programs
     .map((program) => `<option value="${esc(program.slug)}">${esc(program.name)}</option>`)
@@ -433,6 +439,7 @@ $("#contentRows").addEventListener("click", (e) => {
   if (!resource) return;
   fillResourceForm(resource);
   renderContent(dashboard?.libraryPrograms || []);
+  scrollToResourceEditor();
 });
 
 $("#syncEvents").addEventListener("click", async (e) => {

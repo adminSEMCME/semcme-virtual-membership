@@ -17,27 +17,36 @@
   cursor: pointer;
 }
 .admin-body .utility-bar {
-  height: 31px;
+  min-height: 42px;
   background: var(--blue);
   color: #fff;
-  font-size: 12px;
-}
-.admin-body .utility-bar > div {
-  height: 100%;
-  max-width: 1280px;
-  margin: auto;
-  padding: 0 30px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
+  gap: 24px;
+  padding: 6px max(30px, calc((100vw - 1280px) / 2));
+}
+.admin-body .utility-bar p {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 400;
 }
 .admin-body .utility-bar a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 3px;
   color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
   text-decoration: none;
-  font-weight: 800;
 }
 .admin-body .utility-bar a:hover {
-  text-decoration: underline;
+  background: rgba(255, 255, 255, 0.12);
+  text-decoration: none;
 }
 .site-header > a:last-child {
   color: var(--blue);
