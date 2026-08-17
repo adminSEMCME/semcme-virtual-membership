@@ -205,7 +205,7 @@ function fillResourceForm(resource = null) {
 
 function scrollToResourceEditor() {
   requestAnimationFrame(() => {
-    $("#resourceEditor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    $("#resourceEditorStep")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 }
 
