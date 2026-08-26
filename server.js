@@ -166,6 +166,7 @@ await db.exec(db.type === 'postgres' ? `
     cc_registration_id TEXT DEFAULT '',
     cc_status TEXT DEFAULT 'local',
     last_cc_sync_at TIMESTAMPTZ,
+    last_login_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
   );
@@ -227,6 +228,7 @@ await db.exec(db.type === 'postgres' ? `
     cc_registration_id TEXT DEFAULT '',
     cc_status TEXT DEFAULT 'local',
     last_cc_sync_at TEXT,
+    last_login_at TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
   );
@@ -293,7 +295,34 @@ async function ensureMagicLinksSchema() {
   await db.run('CREATE UNIQUE INDEX IF NOT EXISTS magic_links_token_hash_idx ON magic_links(token_hash)');
 }
 
+async function ensureMembersSchema() {
+  if (db.type === 'postgres') {
+    await db.exec('ALTER TABLE members ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ');
+    return;
+  }
+
+  const columns = new Set((await db.all('PRAGMA table_info(members)')).map((column) => column.name));
+  if (!columns.has('last_login_at')) await db.run('ALTER TABLE members ADD COLUMN last_login_at TEXT');
+}
+
 await ensureMagicLinksSchema();
+await ensureMembersSchema();
+await db.run(`
+  UPDATE members
+  SET last_login_at = (
+    SELECT MAX(used_at)
+    FROM magic_links
+    WHERE magic_links.member_id = members.id
+      AND magic_links.used_at IS NOT NULL
+  )
+  WHERE last_login_at IS NULL
+    AND EXISTS (
+      SELECT 1
+      FROM magic_links
+      WHERE magic_links.member_id = members.id
+        AND magic_links.used_at IS NOT NULL
+    )
+`);
 
 const existingRegistrations = await db.all('SELECT * FROM registrations ORDER BY created_at');
 for (const r of existingRegistrations) {
@@ -1417,7 +1446,7 @@ async function verifyMagicToken(token) {
   const email = clean(payload.email, 200).toLowerCase();
   if (!emailOk(email)) return null;
 
-  return upsertMemberFromContact(
+  const memberRow = await upsertMemberFromContact(
     {
       email,
       first_name: payload.first_name,
@@ -1427,6 +1456,9 @@ async function verifyMagicToken(token) {
     },
     payload.source || 'constant_contact_list'
   );
+  if (!memberRow) return null;
+  await db.run('UPDATE members SET last_login_at=CURRENT_TIMESTAMP WHERE id=$1', [memberRow.id]);
+  return memberRow;
 }
 
 let virtualEventsCache = { at: 0, events: [] };

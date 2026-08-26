@@ -38,6 +38,16 @@ function formatDate(value) {
   return Number.isNaN(fallback.getTime()) ? "-" : fallback.toLocaleDateString();
 }
 
+function formatExportDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function csvCell(value) {
   const text = String(value ?? "").replace(/\r?\n/g, " ").trim();
   return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
@@ -60,13 +70,14 @@ function downloadCsv(filename, rows) {
 function exportMembers() {
   const members = dashboard?.members || [];
   const rows = [
-    ["Name", "Email", "Institution", "Source", "Date"],
+    ["Name", "Email", "Institution", "Source", "Date created", "Last login"],
     ...members.map((member) => [
       member.name || "",
       member.email || "",
       member.institution || "",
       member.cc_status || member.source || "",
-      formatDate(member.created_at || member.updated_at || member.last_cc_sync_at),
+      formatExportDate(member.created_at),
+      formatExportDate(member.last_login_at),
     ]),
   ];
   downloadCsv("virtual-membership-members.csv", rows);
@@ -157,9 +168,9 @@ function renderMembers(members) {
     members
       .map(
         (x) =>
-          `<tr><td><strong>${esc([x.first_name, x.last_name].filter(Boolean).join(" ") || x.email)}</strong><small>${esc(x.email)}</small></td><td>${esc(x.institution || "-")}</td><td>${badge(x.cc_status)}</td><td>${esc(formatDate(x.created_at || x.updated_at || x.last_cc_sync_at))}</td></tr>`,
+          `<tr><td><strong>${esc([x.first_name, x.last_name].filter(Boolean).join(" ") || x.email)}</strong><small>${esc(x.email)}</small></td><td>${esc(x.institution || "-")}</td><td>${badge(x.cc_status)}</td><td>${esc(formatDate(x.created_at))}</td><td>${esc(formatDate(x.last_login_at))}</td></tr>`,
       )
-      .join("") || '<tr><td colspan="4">No members synced yet.</td></tr>';
+      .join("") || '<tr><td colspan="5">No members synced yet.</td></tr>';
 }
 
 function renderInstitutionSegments(names = []) {
