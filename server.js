@@ -495,14 +495,6 @@ async function exchangeConstantContactAuthorizationCode(code) {
   return data;
 }
 
-function resourceShouldEmbed(resource) {
-  const title = String(resource.title || '').toLowerCase();
-  return ![
-    'pediatric lunch & learn — videos from 2022 to 2025',
-    'ob/gyn and fetal assessment — videos from 2020 to 2024'
-  ].includes(title);
-}
-
 function resourceIsRetired(resource) {
   return String(resource.title || '').toLowerCase() === 'structural and social antecedents of health — virtual training';
 }
@@ -577,7 +569,7 @@ async function seedLibraryContent() {
           resource.presenter || '',
           resource.date || '',
           resource.meta || '',
-          resourceShouldEmbed(resource),
+          resource.embed !== false,
           JSON.stringify(resource.videos || []),
           resourceIndex
         ]);
@@ -629,6 +621,26 @@ async function ensureFamilyMedicineContent() {
       [JSON.stringify(resource.videos || []), existing.id]
     );
   }
+}
+
+async function enableBundledPlaylistPlayers() {
+  const migrationKey = 'migration:enable-bundled-playlist-players-v1';
+  if (await db.get('SELECT key FROM settings WHERE key=$1', [migrationKey])) return;
+
+  const playlistUrls = [
+    'https://www.youtube.com/playlist?list=PLRSo5uXl0WzWo9_rWLmr26A0iNaO30e6s',
+    'https://www.youtube.com/watch?v=Thke9h_D_A4&list=PLRSo5uXl0WzWNuKxAPsg7a6Y0bSJDHOJY'
+  ];
+  for (const url of playlistUrls) {
+    await db.run(
+      'UPDATE library_resources SET embed_enabled=$1, updated_at=CURRENT_TIMESTAMP WHERE type=$2 AND url=$3',
+      [true, 'playlist', url]
+    );
+  }
+  await db.run(
+    'INSERT INTO settings(key, value) VALUES ($1, $2) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
+    [migrationKey, 'applied']
+  );
 }
 
 async function getLibraryPrograms({ includeDisabled = false } = {}) {
@@ -773,6 +785,7 @@ async function deleteLibraryResource(id) {
 
 await seedLibraryContent();
 await ensureFamilyMedicineContent();
+await enableBundledPlaylistPlayers();
 
 let smtpTransporter = null;
 async function getSmtpTransporter() {

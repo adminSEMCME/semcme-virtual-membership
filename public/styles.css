@@ -242,7 +242,7 @@ a {
 }
 .membership-interest a {
   color: #fff;
-  font-weight: 700;
+  font-weight: inherit;
   text-underline-offset: 3px;
 }
 .trust-row {
