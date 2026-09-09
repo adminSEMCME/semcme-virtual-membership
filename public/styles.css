@@ -236,6 +236,15 @@ a {
   font-size: 18px;
   max-width: 650px;
 }
+.welcome-copy > .membership-interest {
+  margin-top: 18px;
+  font-size: 15px;
+}
+.membership-interest a {
+  color: #fff;
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
 .trust-row {
   display: flex;
   gap: 28px;
@@ -696,7 +705,7 @@ a {
 .playlist-player {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+  grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
   border: 1px solid var(--line);
   border-radius: 18px;
   overflow: hidden;
@@ -722,6 +731,10 @@ a {
   padding: 14px 16px;
   background: var(--navy);
   color: #fff;
+}
+.playlist-queue-head strong {
+  font-size: 13px;
+  line-height: 1.35;
 }
 .playlist-queue-head span {
   color: #d7e6ed;

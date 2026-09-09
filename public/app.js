@@ -123,7 +123,42 @@ function resourceCard(r) {
 
 function playlistPlayer(r) {
   if (r.embed === false) return resourceCard(r);
-  return videoResource(r);
+  const videos = (Array.isArray(r.videos) ? r.videos : [])
+    .map((video) => ({
+      ...video,
+      embedUrl: youtubeEmbedUrl(video.url, "recording"),
+    }))
+    .filter((video) => video.title && video.embedUrl);
+  if (!videos.length) return videoResource(r);
+
+  const first = videos[0];
+  const firstMeta = [first.presenter, first.date, first.meta, r.meta]
+    .filter(Boolean)
+    .join(" · ");
+  return `<article class="playlist-player">
+    <div class="playlist-main">
+      <div class="video-frame">
+        <iframe src="${esc(first.embedUrl)}" title="${esc(first.title)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+      </div>
+      <div class="video-copy">
+        <span class="resource-group">${esc(r.title)} · YouTube playlist</span>
+        <h3 class="playlist-video-title">${esc(first.title)}</h3>
+        <p class="playlist-video-meta"${firstMeta ? "" : " hidden"}>${esc(firstMeta)}</p>
+        <a class="playlist-video-link" href="${esc(first.url)}" target="_blank" rel="noopener">Open this video on YouTube <span>→</span></a>
+      </div>
+    </div>
+    <aside class="playlist-queue" aria-label="Videos in ${esc(r.title)}">
+      <div class="playlist-queue-head"><strong>${esc(r.title)}</strong><span>${videos.length} ${videos.length === 1 ? "video" : "videos"}</span></div>
+      ${videos
+        .map((video, index) => {
+          const meta = [video.presenter, video.date, video.meta, r.meta]
+            .filter(Boolean)
+            .join(" · ");
+          return `<button type="button" class="${index === 0 ? "active" : ""}" data-playlist-video data-video-url="${esc(video.url)}" data-embed-url="${esc(video.embedUrl)}" data-video-title="${esc(video.title)}" data-video-meta="${esc(meta)}" aria-current="${index === 0 ? "true" : "false"}"><span>${index + 1}</span><strong>${esc(video.title)}</strong></button>`;
+        })
+        .join("")}
+    </aside>
+  </article>`;
 }
 
 function videoResource(r) {
@@ -152,6 +187,31 @@ function resourceCollection(resources, archive = false) {
   const className = hasVideo ? "video-grid" : archive ? "archive-grid" : "resource-list";
   return `<div class="${className}">${resources.map((r) => (hasVideo ? (r.type === "playlist" ? playlistPlayer(r) : videoResource(r)) : resourceCard(r))).join("")}</div>`;
 }
+
+$("#programView").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-playlist-video]");
+  if (!button) return;
+
+  const player = button.closest(".playlist-player");
+  const embedUrl = button.dataset.embedUrl;
+  const title = button.dataset.videoTitle;
+  const meta = button.dataset.videoMeta;
+  if (!player || !embedUrl || !title) return;
+
+  const frame = player.querySelector("iframe");
+  const metaElement = player.querySelector(".playlist-video-meta");
+  frame.src = embedUrl;
+  frame.title = title;
+  player.querySelector(".playlist-video-title").textContent = title;
+  metaElement.textContent = meta;
+  metaElement.hidden = !meta;
+  player.querySelector(".playlist-video-link").href = button.dataset.videoUrl;
+  player.querySelectorAll("[data-playlist-video]").forEach((item) => {
+    const active = item === button;
+    item.classList.toggle("active", active);
+    item.setAttribute("aria-current", active ? "true" : "false");
+  });
+});
 
 function renderProgram(slug, updateHash = true) {
   const p =

@@ -12,6 +12,11 @@ export const programs = [
     archives: [{ title: 'Faculty Development — Videos from 2020 to 2023', type: 'playlist', url: 'https://www.youtube.com/playlist?list=PLRSo5uXl0WzUe2QpGjL3VWKYlqy34xMs-', meta: 'SEMCME video archive', videos: playlistVideos['PLRSo5uXl0WzUe2QpGjL3VWKYlqy34xMs-'] }]
   },
   {
+    slug: 'family-medicine', name: 'Family Medicine', short: 'FM', description: 'Education and professional development resources for family medicine programs.',
+    current: [{ title: 'Coaching in GME', type: 'playlist', url: 'https://www.youtube.com/playlist?list=PLamaf5G11pGQ', meta: 'SEMCME video series', videos: playlistVideos['PLamaf5G11pGQ'] }],
+    archives: []
+  },
+  {
     slug: 'jedi', name: 'JEDI', short: 'JE', description: 'Justice, equity, diversity, and inclusion learning resources.',
     current: [
       { title: 'Structural and Social Antecedents of Health — Virtual Training', presenter: 'Robert Flora, MD, MBA, MPH and Aubin Whitmer, C-TAGME', date: 'February 23, 2024', type: 'recording', url: 'https://youtu.be/m1UuVEuirYw' },

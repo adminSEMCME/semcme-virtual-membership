@@ -1,6 +1,11 @@
 const video = (title, id) => ({ title, url: `https://www.youtube.com/watch?v=${id}` });
 
 export const playlistVideos = {
+  'PLamaf5G11pGQ': [
+    video('Coaching in GME series Session One', 'tAL9LP_xMLU'),
+    video('Coaching in GME series Session Two', 'RfnJSJeY1IQ'),
+    video('Coaching in GME series Session Three', 'zo3r0v1fTdI'),
+  ],
   'PLRSo5uXl0WzWi76-SRQfDF7AVY5JT5XTD': [
     video('Problems and Problem Solving: Working with Difficult Folks', '4oDo1Kfd3RQ'),
     video('Leadership and Change Management', 'bsl8i4qGbmg'),

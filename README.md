@@ -77,7 +77,7 @@ Visit `/admin.html`, sign in with `ADMIN_PASSWORD` or the shared `GLOBAL_ADMIN_P
 - `Sync members` to import contacts from the Constant Contact Virtual Members list.
 - `Library content` to add, update, hide, move, or remove program areas and resources in the Upcoming programs, Current & previous academic year, and Archive sections.
 
-Embedded YouTube playlists use YouTube's live playlist player. If videos are added to the playlist in YouTube, the embedded playlist reflects those additions automatically. If a video or playlist is private, age-restricted, or has external playback disabled, turn off `Embed YouTube player when possible` so members see a clean link instead of a broken player.
+Embedded YouTube playlists with imported video details use an on-site player and video queue. Selecting a title in the queue loads that video without sending the member away from the Virtual Membership site. If imported video details are unavailable, the card falls back to YouTube's embedded playlist player. If a video or playlist is private, age-restricted, or has external playback disabled, turn off `Embed YouTube player when possible` so members see a clean link instead of a broken player.
 
 The dashboard also lists local members and support questions.
 

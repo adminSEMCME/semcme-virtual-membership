@@ -586,6 +586,51 @@ async function seedLibraryContent() {
   }
 }
 
+async function ensureFamilyMedicineContent() {
+  const program = defaultPrograms.find(({ slug }) => slug === 'family-medicine');
+  if (!program) return;
+
+  await db.run(`
+    INSERT INTO library_programs (slug, name, short, description, position, enabled)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    ON CONFLICT(slug) DO NOTHING
+  `, [program.slug, program.name, program.short || '', program.description || '', 2, true]);
+
+  const resource = program.current?.find(({ type }) => type === 'playlist');
+  if (!resource) return;
+  const existing = await db.get(
+    'SELECT id, videos_json FROM library_resources WHERE program_slug=$1 AND url=$2',
+    [program.slug, resource.url]
+  );
+  if (!existing) {
+    await db.run(`
+      INSERT INTO library_resources (
+        id, program_slug, section, title, type, url, group_name, presenter, item_date, meta, embed_enabled, videos_json, position
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    `, [
+      'family-medicine-coaching-in-gme-playlist',
+      program.slug,
+      'current',
+      resource.title,
+      resource.type,
+      resource.url,
+      resource.group || '',
+      resource.presenter || '',
+      resource.date || '',
+      resource.meta || '',
+      true,
+      JSON.stringify(resource.videos || []),
+      0
+    ]);
+  } else if (!parseVideos(existing.videos_json).length) {
+    await db.run(
+      'UPDATE library_resources SET videos_json=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2',
+      [JSON.stringify(resource.videos || []), existing.id]
+    );
+  }
+}
+
 async function getLibraryPrograms({ includeDisabled = false } = {}) {
   const enabledWhere = includeDisabled ? '' : (db.type === 'postgres' ? 'WHERE enabled=true' : 'WHERE enabled=1');
   const programRows = await db.all(`
@@ -727,6 +772,7 @@ async function deleteLibraryResource(id) {
 }
 
 await seedLibraryContent();
+await ensureFamilyMedicineContent();
 
 let smtpTransporter = null;
 async function getSmtpTransporter() {
