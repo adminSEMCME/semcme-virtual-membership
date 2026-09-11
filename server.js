@@ -1,11 +1,13 @@
 import http from 'node:http';
+import { fileURLToPath } from 'node:url';
+import { migratePrograms, reconcileEvents, eventKey } from './data/program-sync.js';
 import { readFile, mkdir } from 'node:fs/promises';
 import { dirname, extname, join, normalize } from 'node:path';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { programs as defaultPrograms, defaultBanner, defaultEvents } from './data/library.js';
 
-const root = new URL('.', import.meta.url).pathname;
+const root = fileURLToPath(new URL('.', import.meta.url));
 
 const initialEnv = new Set(Object.keys(process.env));
 async function loadEnvFile(name, override = false) {
@@ -650,7 +652,10 @@ async function getLibraryPrograms({ includeDisabled = false } = {}) {
     ${enabledWhere}
     ORDER BY position ASC, name ASC
   `);
-  const resourceRows = await db.all('SELECT * FROM library_resources ORDER BY position ASC, title ASC');
+  const resourceRows = await db.all(`SELECT r.* FROM library_resources r
+    LEFT JOIN imported_programs i ON i.resource_id=r.id
+    ${includeDisabled ? '' : 'WHERE i.event_key IS NULL OR (i.suppressed=0 AND (i.active=1 OR i.manual=1))'}
+    ORDER BY r.position ASC, r.title ASC`);
   const byProgram = new Map();
   for (const row of resourceRows) {
     if (!byProgram.has(row.program_slug)) byProgram.set(row.program_slug, []);
@@ -774,18 +779,21 @@ async function saveLibraryResource(payload = {}) {
     videosJson,
     item.position
   ]);
+  await db.run('UPDATE imported_programs SET manual=1, needs_review=0 WHERE resource_id=$1', [id]);
   return { id };
 }
 
 async function deleteLibraryResource(id) {
   id = clean(id, 80);
   if (!id) throw Object.assign(new Error('Resource id is required.'), { status:400 });
+  await db.run('UPDATE imported_programs SET suppressed=1 WHERE resource_id=$1', [id]);
   await db.run('DELETE FROM library_resources WHERE id=$1', [id]);
 }
 
 await seedLibraryContent();
 await ensureFamilyMedicineContent();
 await enableBundledPlaylistPlayers();
+await migratePrograms(db);
 
 let smtpTransporter = null;
 async function getSmtpTransporter() {
@@ -1521,21 +1529,32 @@ async function verifyMagicToken(token) {
 }
 
 let virtualEventsCache = { at: 0, events: [] };
+let virtualEventsRefresh;
 async function getVirtualEvents(force=false) {
-  if (!force && virtualEventsCache.at > Date.now() - semcmeHeroRefreshMs) return virtualEventsCache.events;
   const storedEvents = await getSettingJson('virtual_hero_events', []);
-  const r = await fetch(semcmeHomeUrl);
-  if (!r.ok) throw new Error(`SEMCME homepage returned ${r.status}`);
-  const html = await r.text();
-  const events = parseSemcmeVirtualSlides(html);
-  if (!events.length) {
-    const fallbackEvents = storedEvents.length ? storedEvents : defaultEvents;
-    virtualEventsCache = { at: Date.now(), events: fallbackEvents };
-    return fallbackEvents;
-  }
-  await setSettingJson('virtual_hero_events', events);
-  virtualEventsCache = { at: Date.now(), events };
-  return events;
+  const at = await getSettingJson('virtual_hero_synced_at', 0);
+  if (!force && at > Date.now() - semcmeHeroRefreshMs) return storedEvents;
+  if (virtualEventsRefresh) return virtualEventsRefresh;
+  virtualEventsRefresh = (async () => {
+    try {
+    const r = await fetch(semcmeHomeUrl, { signal: AbortSignal.timeout(20000) });
+    if (!r.ok) throw new Error(`SEMCME homepage returned ${r.status}`);
+    const html = await r.text();
+    const events = parseSemcmeVirtualSlides(html);
+    if (!/\bet_pb_slide\b/.test(html)) throw new Error('SEMCME carousel markup was not found; previous programs retained.');
+    await reconcileEvents(db, events);
+    await setSettingJson('virtual_hero_events', events);
+    await setSettingJson('virtual_hero_synced_at', Date.now());
+    await setSettingJson('virtual_hero_sync_error', '');
+    virtualEventsCache = { at: Date.now(), events };
+    return events;
+    } catch (error) {
+      await setSettingJson('virtual_hero_sync_error', error.message);
+      if (force) throw error;
+      return storedEvents;
+    }
+  })();
+  try { return await virtualEventsRefresh; } finally { virtualEventsRefresh = null; }
 }
 
 function parseSemcmeVirtualSlides(html) {
@@ -1544,11 +1563,14 @@ function parseSemcmeVirtualSlides(html) {
     imageByClass.set(match[1], match[2].replace(/^['"]|['"]$/g, ''));
   }
   const slides = [];
-  const slideRe = /<div class="[^"]*\bet_pb_slide\b[^"]*\bet_pb_slide_(\d+)\b[^"]*"[\s\S]*?(?=<div class="[^"]*\bet_pb_slide\b[^"]*\bet_pb_slide_\d+\b|<\/div>\s*<\/div>\s*<\/div>\s*<\/div>)/g;
-  for (const match of html.matchAll(slideRe)) {
-    const index = match[1], block = match[0];
+  const slideRe = /<div class="[^"]*\bet_pb_slide\b[^"]*\bet_pb_slide_(\d+)\b[^"]*"/g;
+  const starts = [...html.matchAll(slideRe)];
+  if (!starts.length) throw new Error('SEMCME carousel slides could not be parsed; previous programs retained.');
+  for (const [position, match] of starts.entries()) {
+    const index = match[1], block = html.slice(match.index, starts[position + 1]?.index ?? html.length);
     const titleMatch = block.match(/<h2 class="et_pb_slide_title">\s*<a[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>\s*<\/h2>/);
     const contentMatch = block.match(/<div class="et_pb_slide_content">([\s\S]*?)<\/div>/);
+    if (!titleMatch || !contentMatch) throw new Error('SEMCME slide format changed; previous programs retained.');
     const buttonMatch = block.match(/<a class="et_pb_button et_pb_more_button"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/);
     const title = stripHtml(titleMatch?.[2] || '');
     const description = stripHtml(contentMatch?.[1] || '');
@@ -1572,6 +1594,12 @@ function parseSemcmeVirtualSlides(html) {
 }
 
 async function api(req, res, path) {
+  if (path === '/api/cron/sync-programs' && req.method === 'GET') {
+    const secret = process.env.CRON_SECRET;
+    if (!secret || req.headers.authorization !== `Bearer ${secret}`) return json(res,401,{error:'Unauthorized'});
+    const events = await getVirtualEvents(true);
+    return json(res,200,{ok:true,count:events.length});
+  }
   if (path === '/api/config' && req.method === 'GET') return json(res,200,{ authenticated:member(req), emailConfigured:Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) || Boolean(process.env.RESEND_API_KEY), constantContactConfigured, registrationUrl });
   if (path === '/api/auth/request-link' && req.method === 'POST') {
     const b=await readBody(req); const email=clean(b.email,200).toLowerCase();
@@ -1650,7 +1678,10 @@ async function api(req, res, path) {
     let heroEvents = [];
     try { heroEvents = await getVirtualEvents(); } catch(e) { console.error(e.message); }
     return json(res,200,{
-      heroEvents,
+      heroEvents: heroEvents.map(event => ({ ...event, eventKey: eventKey(event) })),
+      heroPlacements: await db.all('SELECT i.*, r.program_slug, r.section FROM imported_programs i LEFT JOIN library_resources r ON r.id=i.resource_id'),
+      heroSyncedAt: await getSettingJson('virtual_hero_synced_at', 0),
+      heroSyncError: await getSettingJson('virtual_hero_sync_error', ''),
       constantContactConfigured,
       databaseType:db.type,
       constantContactListId:ccVirtualMembersListId || resolvedVirtualMembersListId || '',

@@ -67,13 +67,23 @@ If email is not configured in local development, the sign-in link is shown on sc
 
 The member hero carousel is scraped from `https://semcme.org/` by default. Slides are included when the title or slide text contains `virtual`, which also matches `virtually`. Each matching slide brings over its title, body text, button link/label, and background image.
 
-The server refreshes the SEMCME.org scrape once per day by default, and open member dashboards check the hero list daily. If a virtual slide is added or removed on SEMCME.org, the Virtual Membership carousel follows automatically on the next daily refresh. Staff can also use `Refresh programs` in the admin dashboard for an immediate manual sync. `SEMCME_HERO_REFRESH_MS` is clamped to a minimum of one day to avoid checking SEMCME.org too frequently.
+Production uses a Vercel cron job at `0 10 * * *` (10:00 UTC daily, 6 a.m. Eastern daylight time / 5 a.m. standard time). Before deploying, add a random `CRON_SECRET` of at least 32 characters to the Vercel project's **Production** environment variables. Vercel sends it as a bearer token to `/api/cron/sync-programs`. Confirm the job is enabled in Vercel Settings > Cron Jobs after deployment. Hobby plans may run it anywhere within the scheduled hour.
+
+The successful refresh timestamp and events are stored in the database, so server restarts do not reset the daily cache. Page requests also refresh stale data as a fallback. Open member pages check the saved library every minute; this does not scrape SEMCME.org every minute. Staff can use **Refresh programs** for an immediate source refresh. Failed fetches or missing carousel markup preserve previous events and display the error in admin. A valid carousel with no virtual events clears imported banners and hides unmodified imported library entries.
+
+Imported events receive stable identities based on registration URLs, ignoring tracking parameters. Known program titles and category keywords route events automatically; unrecognized events go to Additional Program Offerings with a review notice. Events default to Upcoming; EHR, modules, and on-demand resources go to Current. Explicit full dates in banner text use the last date for multi-session events, moving past events to Current or Archive using July academic-year boundaries. Dates without a year are not guessed. A registration link remains a registration link; the system does not invent a recording when an event ends.
+
+**Admin control:** Every library item has a Program destination and Section selector. Move an existing item by changing these and saving; its ID, details, and playlist videos remain intact. Saving an imported item makes it admin-managed, so future source refreshes preserve its content and placement, even after its banner is removed. Deleting an imported item suppresses its recreation. The banner list shows its program/section, hidden or removed status, review flag, and a Move / edit button.
+
+A one-time database migration reorganizes existing recordings into Pediatrics, Hot Topics, Lecture Series and Modules, and Additional Program Offerings; renames JEDI to Justice in Healthcare; removes the obsolete virtual QI registration; and adds EHR, Advocacy 101, and two Home Buying recordings already referenced in the bundled playlists. Home Buying dates were unavailable, so those are labeled Recording 1/2 in Archive. Existing playlist collections remain intact. The migration also runs for fresh installations and does not rerun after staff edits.
+
+Run `npm run check` and `npm test` before pushing. The integration test uses a temporary SQLite database and mocked source pages; it does not access production data or send mail. Production requires durable database storage (`DATABASE_URL`) for sync timestamps and admin decisions to survive serverless restarts.
 
 ## Staff workflow
 
 Visit `/admin.html`, sign in with `ADMIN_PASSWORD` or the shared `GLOBAL_ADMIN_PASSWORD`, and use:
 
-- `Refresh programs` to re-scrape SEMCME.org virtual hero slides.
+- `Refresh programs` to sync both virtual hero slides and their library placements.
 - `Sync members` to import contacts from the Constant Contact Virtual Members list.
 - `Library content` to add, update, hide, move, or remove program areas and resources in the Upcoming programs, Current & previous academic year, and Archive sections.
 

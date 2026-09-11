@@ -153,14 +153,22 @@ function flattenResources(program) {
 }
 
 function renderHeroEvents(events) {
+  const placements = dashboard?.heroPlacements || [];
+  const programs = dashboard?.libraryPrograms || [];
   $("#heroEventRows").innerHTML =
     events
       .map(
-        (x) =>
-          `<article class="sync-item"><div>${x.backgroundImage ? `<img src="${esc(x.backgroundImage)}" alt="">` : ""}<strong>${esc(x.title)}</strong><small>${esc(x.description)}</small></div><a href="${esc(x.ctaUrl)}" target="_blank" rel="noopener">${esc(x.ctaLabel || "Open")}</a></article>`,
+        (x) => {
+          const placement = placements.find(p => p.event_key === x.eventKey);
+          const program = programs.find(p => p.slug === placement?.program_slug);
+          const location = placement?.suppressed ? 'Removed from library' : program ? `${program.name} / ${sectionLabel(placement.section)}${program.enabled ? '' : ' (program hidden)'}` : 'Not placed — destination unavailable';
+          return `<article class="sync-item"><div>${x.backgroundImage ? `<img src="${esc(x.backgroundImage)}" alt="">` : ""}<strong>${esc(x.title)}</strong><small>${esc(x.description)}</small><p>${esc(location)}${placement?.needs_review ? ' — Please review category' : ''}${placement?.manual ? ' — Admin managed' : ''}</p>${program && !placement.suppressed ? `<button type="button" class="outline-button" data-hero-resource="${esc(placement.resource_id)}" data-program="${esc(program.slug)}">Move / edit library item</button>` : ''}</div><a href="${esc(x.ctaUrl)}" target="_blank" rel="noopener">${esc(x.ctaLabel || "Open")}</a></article>`;
+        },
       )
       .join("") ||
     '<div class="empty-admin">No virtual programs were found on SEMCME.org.</div>';
+  const status = document.querySelector('#syncEvents').closest('.admin-panel').querySelector('.form-status');
+  status.textContent = dashboard.heroSyncError || (dashboard.heroSyncedAt ? `Last successful sync: ${new Date(dashboard.heroSyncedAt).toLocaleString()}. Scheduled daily; Refresh programs runs immediately.` : 'Awaiting first sync.');
 }
 
 function renderMembers(members) {
@@ -202,6 +210,8 @@ function fillResourceForm(resource = null) {
   const form = $("#resourceForm");
   selectedResourceId = resource?.id || "";
   form.id.value = resource?.id || "";
+  form.programSlug.innerHTML = (dashboard?.libraryPrograms || []).map(p => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join('');
+  form.programSlug.value = selectedProgramSlug;
   form.section.value = resource?.section || "current";
   form.type.value = resource?.type || "recording";
   form.title.value = resource?.title || "";
@@ -387,7 +397,7 @@ $("#resourceForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const button = e.submitter || e.currentTarget.querySelector("button[type='submit']");
   const status = $("#contentStatus");
-  const payload = { ...formObject(e.currentTarget), programSlug: $("#programForm").slug.value || selectedProgramSlug };
+  const payload = formObject(e.currentTarget);
   const ok = await confirmAction({
     title: payload.id ? "Save item changes?" : "Save new library item?",
     message: payload.id
@@ -405,6 +415,7 @@ $("#resourceForm").addEventListener("submit", async (e) => {
       }),
     );
     selectedResourceId = result.id;
+    selectedProgramSlug = payload.programSlug;
     status.textContent = "Library item saved.";
     status.classList.add("success");
     await load();
@@ -450,6 +461,17 @@ $("#contentRows").addEventListener("click", (e) => {
   if (!resource) return;
   fillResourceForm(resource);
   renderContent(dashboard?.libraryPrograms || []);
+  scrollToResourceEditor();
+});
+
+$("#heroEventRows").addEventListener("click", (e) => {
+  const button = e.target.closest('[data-hero-resource]');
+  if (!button) return;
+  selectedProgramSlug = button.dataset.program;
+  selectedResourceId = button.dataset.heroResource;
+  renderContent(dashboard.libraryPrograms);
+  const program = dashboard.libraryPrograms.find(p => p.slug === selectedProgramSlug);
+  fillResourceForm(flattenResources(program).find(r => r.id === selectedResourceId));
   scrollToResourceEditor();
 });
 

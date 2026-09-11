@@ -24,7 +24,7 @@ const api = async (url, options = {}) => {
 };
 let library = null,
   activeSlug = "chief-resident";
-const heroSyncIntervalMs = 24 * 60 * 60 * 1000;
+const heroSyncIntervalMs = 60 * 1000;
 let activeEvent = 0,
   carouselTimer,
   heroSyncTimer;
@@ -228,7 +228,7 @@ function renderProgram(slug, updateHash = true) {
   $("#programView").innerHTML =
     `<header class="program-head"><div><span class="mini-kicker">Program area</span><h1>${esc(p.name)}</h1><p>${esc(p.description)}</p></div><span class="count-badge">${count} ${count === 1 ? "resource" : "resources"}</span></header>
     <section class="content-section"><div class="section-title"><h2>Upcoming programs</h2><span>Registration & events</span></div>${p.upcoming?.length ? resourceCollection(p.upcoming) : `<div class="empty-state compact">No upcoming programs posted.</div>`}</section>
-    <section class="content-section"><div class="section-title"><h2>Current & previous academic year</h2><span>Recent recordings</span></div>${p.current.length ? resourceCollection(p.current) : `<div class="empty-state compact">No recent recordings posted.</div>`}</section>
+    <section class="content-section"><div class="section-title"><h2>Current & previous academic year</h2><span>Programs & recordings</span></div>${p.current.length ? resourceCollection(p.current) : `<div class="empty-state compact">No current programs or recordings posted.</div>`}</section>
     <section class="content-section"><div class="section-title"><h2>Archive</h2><span>Prior academic years</span></div>${p.archives.length ? resourceCollection(p.archives, true) : `<div class="empty-state compact">No archived resources posted.</div>`}</section>`;
   if (updateHash) history.replaceState(null, "", `#${p.slug}`);
 }
@@ -243,13 +243,11 @@ function renderLibrary() {
   $("#programSelect").innerHTML = library.programs
     .map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`)
     .join("");
-  $("#programNav").addEventListener("click", (e) => {
+  $("#programNav").onclick = (e) => {
     const b = e.target.closest("button");
     if (b) renderProgram(b.dataset.slug);
-  });
-  $("#programSelect").addEventListener("change", (e) =>
-    renderProgram(e.target.value),
-  );
+  };
+  $("#programSelect").onchange = (e) => renderProgram(e.target.value);
   renderProgram(location.hash.slice(1) || activeSlug, false);
 }
 const eventSignature = (events = []) =>
@@ -259,7 +257,11 @@ const eventSignature = (events = []) =>
 async function syncHeroEvents() {
   if (!library) return;
   try {
-    const result = await api("/api/virtual-events");
+    const result = await api("/api/library");
+    if (JSON.stringify(result.programs) !== JSON.stringify(library.programs)) {
+      library.programs = result.programs;
+      renderLibrary();
+    }
     if (eventSignature(result.events) === eventSignature(library.events)) return;
     const currentId = library.events?.[activeEvent]?.id;
     library.events = result.events || [];
