@@ -9,9 +9,12 @@
     "check": "node --check server.js && node --check public/admin.js && node --check public/app.js && node --check data/program-sync.js",
     "test": "node tools/test-program-sync.mjs"
   },
-  "engines": { "node": ">=22.5" },
+  "engines": {
+    "node": ">=22.5"
+  },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",
-    "nodemailer": "^8.0.10"
+    "nodemailer": "^8.0.10",
+    "pg": "^8.23.1"
   }
 }

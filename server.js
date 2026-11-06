@@ -6,6 +6,7 @@ import { dirname, extname, join, normalize } from 'node:path';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import { programs as defaultPrograms, defaultBanner, defaultEvents } from './data/library.js';
+import { prefixTables } from './data/database-tables.js';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
@@ -123,24 +124,37 @@ function sqliteDatabase() {
 }
 
 async function postgresDatabase() {
-  const { neon } = await import('@neondatabase/serverless');
-  const sql = neon(databaseUrl);
+  const prefix = process.env.DATABASE_TABLE_PREFIX || '';
+  prefixTables('', prefix);
+  const provider = process.env.DATABASE_PROVIDER || 'neon';
+  if (!['neon', 'postgres'].includes(provider)) throw new Error('Unsupported DATABASE_PROVIDER.');
+  let query;
+  if (provider === 'postgres') {
+    const { default: pg } = await import('pg');
+    const pool = new pg.Pool({ connectionString: databaseUrl, max: 3, idleTimeoutMillis: 10000, connectionTimeoutMillis: 15000 });
+    pool.on('error', () => console.error('Idle database connection failed.'));
+    query = async (statement, params = []) => (await pool.query(prefixTables(statement, prefix), params)).rows;
+  } else {
+    const { neon } = await import('@neondatabase/serverless');
+    const sql = neon(databaseUrl);
+    query = (statement, params = []) => sql.query(prefixTables(statement, prefix), params);
+  }
   return {
     type: 'postgres',
     async exec(statement) {
       for (const part of statement.split(';').map((value) => value.trim()).filter(Boolean)) {
-        await sql.query(part);
+        await query(part);
       }
     },
     async all(statement, params = []) {
-      return sql.query(statement, params);
+      return query(statement, params);
     },
     async get(statement, params = []) {
-      const rows = await sql.query(statement, params);
+      const rows = await query(statement, params);
       return rows[0] || null;
     },
     async run(statement, params = []) {
-      await sql.query(statement, params);
+      await query(statement, params);
     }
   };
 }
