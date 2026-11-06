@@ -333,9 +333,11 @@ $("#newProgram").addEventListener("click", () => {
 
 $("#programForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const button = e.submitter || e.currentTarget.querySelector("button[type='submit']");
+  const form = e.currentTarget;
+  const payload = formObject(form);
+  const button = e.submitter || form.querySelector("button[type='submit']");
   const status = $("#contentStatus");
-  const isNew = !e.currentTarget.slug.readOnly;
+  const isNew = !form.slug.readOnly;
   const ok = await confirmAction({
     title: isNew ? "Save new program area?" : "Save program changes?",
     message: isNew
@@ -349,7 +351,7 @@ $("#programForm").addEventListener("submit", async (e) => {
     const result = await withLoading(button, "Saving...", () =>
       api("/api/admin/library/program", {
         method: "POST",
-        body: JSON.stringify(formObject(e.currentTarget)),
+        body: JSON.stringify(payload),
       }),
     );
     selectedProgramSlug = result.slug;
@@ -520,9 +522,10 @@ $("#exportMembers").addEventListener("click", (e) => {
 
 $("#institutionSegmentForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const button = e.submitter || e.currentTarget.querySelector("button[type='submit']");
+  const form = e.currentTarget;
+  const button = e.submitter || form.querySelector("button[type='submit']");
   const status = $("#institutionSegmentStatus");
-  const name = e.currentTarget.name.value.trim();
+  const name = form.name.value.trim();
   status.textContent = "Saving institution...";
   try {
     const d = await withLoading(button, "Saving...", () =>
@@ -531,7 +534,7 @@ $("#institutionSegmentForm").addEventListener("submit", async (e) => {
         body: JSON.stringify({ name }),
       }),
     );
-    e.currentTarget.reset();
+    form.reset();
     renderInstitutionSegments(d.virtualInstitutionSegments || []);
     status.textContent = "Institution added to the segment checker.";
     status.classList.add("success");

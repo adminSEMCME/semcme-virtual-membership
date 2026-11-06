@@ -7,7 +7,7 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "check": "node --check server.js && node --check public/admin.js && node --check public/app.js && node --check data/program-sync.js",
-    "test": "node tools/test-program-sync.mjs"
+    "test": "node tools/test-program-sync.mjs && node tools/test-admin-submit.mjs"
   },
   "engines": {
     "node": ">=22.5"
