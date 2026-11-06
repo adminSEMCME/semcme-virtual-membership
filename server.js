@@ -7,6 +7,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { DatabaseSync } from 'node:sqlite';
 import { programs as defaultPrograms, defaultBanner, defaultEvents } from './data/library.js';
 import { prefixTables } from './data/database-tables.js';
+import { postgresOptions } from './data/postgres-options.js';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
@@ -131,7 +132,7 @@ async function postgresDatabase() {
   let query;
   if (provider === 'postgres') {
     const { default: pg } = await import('pg');
-    const pool = new pg.Pool({ connectionString: databaseUrl, max: 3, idleTimeoutMillis: 10000, connectionTimeoutMillis: 15000 });
+    const pool = new pg.Pool(postgresOptions(databaseUrl));
     pool.on('error', () => console.error('Idle database connection failed.'));
     query = async (statement, params = []) => (await pool.query(prefixTables(statement, prefix), params)).rows;
   } else {
