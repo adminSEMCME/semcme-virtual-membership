@@ -893,7 +893,7 @@ function buildMagicLinkEmail(signInUrl) {
     '',
     signInUrl,
     '',
-    'This Sign-In Link expires in 15 minutes and can only be used once.',
+    'This Sign-In Link expires in 15 minutes. Please do not forward it.',
     '',
     'If you did not request this Sign-In Link, you can ignore this email.',
     '',
@@ -936,7 +936,7 @@ function buildMagicLinkEmail(signInUrl) {
                       Use the secure Sign-In Link below to sign in to the SEMCME Virtual Membership program materials.
                     </p>
                     <p style="margin:0;color:#262626;font-size:20px;line-height:1.5;">
-                      This Sign-In Link expires in 15 minutes and can only be used once.
+                      This Sign-In Link expires in 15 minutes. Please do not forward it.
                     </p>
                   </td>
                 </tr>
@@ -1539,8 +1539,10 @@ async function verifyMagicToken(token) {
   }
 
   if (!payload?.exp || Date.now() > Number(payload.exp)) return null;
+  // Security scanners may visit and execute the sign-in page before the member.
+  // Record first use for auditing without invalidating an otherwise unexpired link.
   const consumed = await db.get(
-    'UPDATE magic_links SET used_at=CURRENT_TIMESTAMP WHERE token_hash=$1 AND used_at IS NULL RETURNING token_hash',
+    `UPDATE magic_links SET used_at=COALESCE(used_at,CURRENT_TIMESTAMP) WHERE token_hash=$1 AND ${db.type === 'postgres' ? 'expires_at' : 'datetime(expires_at)'} > CURRENT_TIMESTAMP RETURNING token_hash`,
     [tokenHash(`${body}.${sig}`)]
   );
   if (!consumed) return null;

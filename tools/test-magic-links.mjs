@@ -16,7 +16,10 @@ try{
 id=(await db.query("INSERT INTO vm_members(email) VALUES('auth-regression@example.org') ON CONFLICT(email) DO UPDATE SET email=excluded.email RETURNING id")).rows[0].id;
 const long=await token();assert.ok(long.length>500);for (const method of ['GET','HEAD']) { const landing=await originalFetch(base+'/?token='+encodeURIComponent(long),{method});assert.equal(landing.status,200); }
 assert.equal((await db.query('SELECT used_at FROM vm_magic_links WHERE token_hash=$1',[createHash('sha256').update(long).digest('base64url')])).rows[0].used_at,null,'scanner landing requests must not consume link');
-const valid=await verify(long);assert.equal(valid.status,200,'valid token longer than 500 characters must work');assert.ok(valid.headers.get('set-cookie')?.includes('semcme_member='));assert.equal((await verify(long)).status,401,'replay rejected');
+const valid=await verify(long);assert.equal(valid.status,200,'valid token longer than 500 characters must work');assert.ok(valid.headers.get('set-cookie')?.includes('semcme_member='));assert.equal((await verify(long)).status,200,'member can sign in after scanner has verified the same link');
+await db.query('UPDATE vm_magic_links SET expires_at=$1 WHERE token_hash=$2',[new Date(Date.now()-1000),createHash('sha256').update(long).digest('base64url')]);
+assert.equal((await verify(long)).status,401,'reused link stops working at database expiration');
 assert.equal((await verify(await token(Date.now()-1000))).status,401,'expired rejected');const fresh=await token();assert.equal((await verify(fresh+'.extra')).status,401,'extra segments rejected');assert.equal((await verify(fresh.slice(0,-2)+'XX')).status,401,'tampering rejected');assert.equal((await verify(fresh)).status,200,'rejected attempts do not consume valid link');
-console.log('PASS: long sign-in links, session cookie, single-use enforcement, expiration, malformed and tampered tokens.');
+const revoked=await token();await db.query('DELETE FROM vm_magic_links WHERE token_hash=$1',[createHash('sha256').update(revoked).digest('base64url')]);assert.equal((await verify(revoked)).status,401,'deleted link rejected');
+console.log('PASS: automatic sign-in after scanner use, long tokens, session cookies, signed and stored expiration, deleted links, malformed and tampered tokens.');
 }finally{await db.query('DELETE FROM vm_magic_links WHERE member_id=$1',[id]);await db.query('DELETE FROM vm_members WHERE id=$1',[id]);await db.end();globalThis.fetch=originalFetch;await new Promise(r=>server.close(r));}
