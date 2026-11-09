@@ -1,3 +1,15 @@
+export function filterAdminMaterials(materials, { view = 'all', categoryId = '', search = '', status = 'all' } = {}) {
+  const query = search.trim().toLowerCase();
+  return materials.filter(m => {
+    if (view === 'additional' && !m.additionalTopics) return false;
+    if (['competency', 'survey', 'topic'].includes(view) && !m.tags.some(t => t.taxonomy === view && (!categoryId || t.id === categoryId))) return false;
+    if (status === 'pending' && !m.needsReview) return false;
+    if (status === 'complete' && m.needsReview) return false;
+    if (status === 'hidden' && m.enabled) return false;
+    return !query || [m.title, m.presenter, ...m.tags.map(t => t.name)].join(' ').toLowerCase().includes(query);
+  });
+}
+
 export function initializeCatalogAdmin({ api, esc, confirmAction, withLoading }) {
   const $ = selector => document.querySelector(selector);
   const controls = $('#catalogControls');
@@ -6,6 +18,7 @@ export function initializeCatalogAdmin({ api, esc, confirmAction, withLoading })
   const collections = { material: 'materials', tag: 'tags', series: 'series' };
   const labels = { material: 'material', tag: 'category', series: 'series' };
   let state = null;
+  let browseView = 'all';
   let busy = false;
   let generation = 0;
   const field = (form, name) => form.elements.namedItem(name);
@@ -67,14 +80,22 @@ export function initializeCatalogAdmin({ api, esc, confirmAction, withLoading })
     }
     form.dataset.dirty = 'false';
   }
+  function renderBrowseCategories() {
+    const select = $('#catalogBrowseCategory');
+    const selected = select.value;
+    const tags = state.tags.filter(t => t.taxonomy === browseView);
+    $('#catalogBrowseCategoryLabel').hidden = !['competency','survey','topic'].includes(browseView);
+    select.innerHTML = '<option value="">All categories in this group</option>' + tags.map(t => {
+      const count = state.materials.filter(m => m.tags.some(tag => tag.id === t.id)).length;
+      return `<option value="${esc(t.id)}">${esc(t.name)}${t.enabled ? '' : ' (hidden)'} (${count})</option>`;
+    }).join('');
+    select.value = tags.some(t => t.id === selected) ? selected : '';
+    $('#catalogBrowse').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.catalogView === browseView)));
+  }
   function renderLists() {
-    const search = $('#catalogSearch').value.trim().toLowerCase();
-    const filter = $('#catalogFilter').value;
-    const materials = state.materials.filter(material => {
-      if (filter === 'pending' && !material.needsReview) return false;
-      if (filter === 'additional' && !material.additionalTopics) return false;
-      if (filter === 'hidden' && material.enabled) return false;
-      return [material.title, material.presenter, ...material.tags.map(tag => tag.name)].join(' ').toLowerCase().includes(search);
+    const materials = filterAdminMaterials(state.materials, {
+      view: browseView, categoryId: $('#catalogBrowseCategory').value,
+      search: $('#catalogSearch').value, status: $('#catalogFilter').value,
     });
     $('#catalogCount').textContent = `${materials.length} of ${state.materials.length} materials`;
     $('#catalogMaterialRows').innerHTML = materials.map(material => `<button type="button" data-catalog-kind="material" data-id="${esc(material.id)}" aria-current="${selectedId('material') === material.id}"><strong>${esc(material.title)}</strong><small>${esc([material.presenter, material.itemDate].filter(Boolean).join(' · '))}</small><small>${esc(material.tags.map(tag => tag.name).join(' · ') || (material.additionalTopics ? 'Additional Topics' : 'No categories assigned'))}</small><small>${material.enabled ? '' : 'Hidden · '}<span class="${material.needsReview ? 'review-pending' : 'review-complete'}">${material.needsReview ? 'Needs review' : 'Review complete'}</span></small></button>`).join('') || `<p>${state.materials.length ? 'No materials match these filters.' : 'No materials have been added to the new library yet. Add one here, or bring in the existing videos during the next preparation step.'}</p>`;
@@ -87,6 +108,7 @@ export function initializeCatalogAdmin({ api, esc, confirmAction, withLoading })
     if (requestGeneration !== generation) return;
     const ids = Object.fromEntries(Object.keys(forms).map(kind => [kind, selection[kind] ?? selectedId(kind)]));
     state = next;
+    renderBrowseCategories();
     controls.hidden = false;
     for (const kind of Object.keys(forms)) fill(kind, state[collections[kind]].find(item => item.id === ids[kind]) || null);
     renderLists();
@@ -152,6 +174,19 @@ export function initializeCatalogAdmin({ api, esc, confirmAction, withLoading })
     fill(kind, item);
     renderLists();
     forms[kind].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+  $('#catalogBrowse').addEventListener('click', event => {
+    const button = event.target.closest('[data-catalog-view]');
+    if (!button || !state) return;
+    browseView = button.dataset.catalogView;
+    $('#catalogBrowseCategory').value = '';
+    renderBrowseCategories(); renderLists();
+  });
+  $('#catalogBrowseCategory').addEventListener('change', () => { if (state) renderLists(); });
+  $('#catalogClearFilters').addEventListener('click', () => {
+    if (!state) return;
+    browseView = 'all'; $('#catalogSearch').value = ''; $('#catalogFilter').value = 'all';
+    $('#catalogBrowseCategory').value = ''; renderBrowseCategories(); renderLists();
   });
   $('#catalogSearch').addEventListener('input', () => { if (state) renderLists(); });
   $('#catalogFilter').addEventListener('change', () => { if (state) renderLists(); });

@@ -1,0 +1,17 @@
+﻿import assert from 'node:assert/strict';
+import { filterAdminMaterials } from '../public/admin-catalog.js';
+const c={id:'communication',taxonomy:'competency',name:'Communication'},s={id:'evaluation',taxonomy:'survey',name:'Evaluation'},t={id:'faculty',taxonomy:'topic',name:'Faculty Development'};
+const rows=[{id:'multi',title:'Feedback',presenter:'Jane Smith',tags:[c,s,t],enabled:true,needsReview:false,additionalTopics:false},{id:'pending',title:'Pending',tags:[],enabled:true,needsReview:true,additionalTopics:false},{id:'additional',title:'Other topic',tags:[t],enabled:true,needsReview:false,additionalTopics:true},{id:'hidden',title:'Hidden recording',tags:[{...c,enabled:false}],enabled:false,needsReview:true,additionalTopics:false}];
+const ids=o=>filterAdminMaterials(rows,o).map(m=>m.id);
+assert.deepEqual(ids({}),['multi','pending','additional','hidden']);
+assert.deepEqual(ids({view:'competency',categoryId:c.id}),['multi','hidden']);
+assert.deepEqual(ids({view:'survey',categoryId:s.id}),['multi']);
+assert.deepEqual(ids({view:'topic',categoryId:t.id}),['multi','additional']);
+assert.deepEqual(ids({view:'additional'}),['additional']);
+assert.deepEqual(ids({view:'competency',categoryId:c.id,status:'pending'}),['hidden']);
+assert.deepEqual(ids({view:'competency',categoryId:c.id,status:'complete',search:' SMITH '}),['multi']);
+assert.deepEqual(ids({view:'survey',categoryId:c.id}),[]);
+assert.deepEqual(ids({view:'additional',status:'pending'}),[]);
+assert.deepEqual(ids({status:'hidden'}),['hidden']);
+assert.deepEqual(ids({search:'faculty'}),['multi','additional']);
+console.log('PASS: admin group/category filters, multi-category materials, combined search and review status, Additional Topics, and hidden records.');

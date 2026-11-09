@@ -68,7 +68,7 @@
             <summary>Need help? Open the admin quick guide</summary>
             <p class="catalog-help-start">Start in <strong>Materials</strong> for everyday updates. Save each form before switching tabs.</p>
             <div class="catalog-help-grid">
-              <section><h3>1. Add or edit</h3><ul><li>Search and select a title, or click <strong>Add material</strong>.</li><li>Enter the title, link, and type. Add presenter and date when known.</li><li>Click <strong>Save material</strong> and confirm.</li></ul></section>
+              <section><h3>1. Add or edit</h3><ul><li>Filter by competency, survey area, subject topic, or Additional Topics. Then search and select a title, or click <strong>Add material</strong>.</li><li>Enter the title, link, and type. Add presenter and date when known.</li><li>Click <strong>Save material</strong> and confirm.</li></ul></section>
               <section><h3>2. Choose categories</h3><ul><li>Check every confirmed competency and survey area. Also select the relevant subject topics.</li><li>Uncheck a category to remove that connection.</li><li>Leave unfinished review boxes unchecked.</li></ul></section>
               <section><h3>Where materials appear</h3><ul><li><strong>All Materials:</strong> every visible material.</li><li><strong>Category pages:</strong> materials assigned to that category.</li><li><strong>Additional Topics:</strong> both ACGME reviews complete, with no ACGME categories assigned. Subject topics can still be selected. Only use this when neither group applies.</li></ul></section>
               <section><h3>Group sessions</h3><ol><li>Create a group in <strong>Series &amp; sessions</strong>.</li><li>Open each material and choose its series.</li><li>Set <strong>Session order</strong> to 1, 2, 3, etc., then save.</li></ol></section>
@@ -87,9 +87,18 @@
               <div class="catalog-grid">
                 <div class="catalog-browser">
                   <div class="catalog-heading"><h3>Materials</h3><button type="button" id="catalogNewMaterial" class="outline-button">Add material</button></div>
+                  <div id="catalogBrowse" class="catalog-browse" role="group" aria-label="Filter materials by group">
+                    <button type="button" data-catalog-view="all" aria-pressed="true">All Materials</button>
+                    <button type="button" data-catalog-view="competency" aria-pressed="false">ACGME Competencies</button>
+                    <button type="button" data-catalog-view="survey" aria-pressed="false">ACGME Survey Areas</button>
+                    <button type="button" data-catalog-view="topic" aria-pressed="false">Subject Topics</button>
+                    <button type="button" data-catalog-view="additional" aria-pressed="false">Additional Topics</button>
+                  </div>
+                  <label id="catalogBrowseCategoryLabel" hidden>Choose a category<select id="catalogBrowseCategory"></select></label>
                   <label>Search materials<input id="catalogSearch" type="search" placeholder="Title, presenter, or category" /></label>
-                  <label>Show<select id="catalogFilter"><option value="all">All materials</option><option value="pending">Needs review</option><option value="additional">Additional Topics</option><option value="hidden">Hidden materials</option></select></label>
-                  <p id="catalogCount" class="field-help"></p>
+                  <label>Review / visibility<select id="catalogFilter"><option value="all">Any status</option><option value="pending">Needs review</option><option value="complete">Review complete</option><option value="hidden">Hidden materials</option></select></label>
+                  <button id="catalogClearFilters" type="button" class="outline-button">Clear filters</button>
+                  <p id="catalogCount" class="field-help" role="status" aria-live="polite"></p>
                   <div id="catalogMaterialRows" class="catalog-list"></div>
                 </div>
                 <form id="catalogMaterialForm" class="field-grid catalog-editor">

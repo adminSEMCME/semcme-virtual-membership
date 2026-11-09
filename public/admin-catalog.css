@@ -21,6 +21,9 @@
 .catalog-heading { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .catalog-heading h3, .catalog-editor h3 { margin: 0; color: #174569; }
 .catalog-browser > label { margin-bottom: 14px; }
+.catalog-browse { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+.catalog-browse button { padding: 10px; border: 1px solid #b7ccdc; border-radius: 6px; background: white; color: #174569; font: inherit; font-size: 14px; cursor: pointer; }
+.catalog-browse button[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: white; font-weight: 700; }
 .catalog-list { max-height: 680px; overflow-y: auto; border: 1px solid #d5e0e8; border-radius: 8px; }
 .catalog-list:empty { display: none; }
 .catalog-list > p { padding: 16px; }
