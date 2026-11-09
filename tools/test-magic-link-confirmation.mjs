@@ -1,0 +1,16 @@
+﻿import assert from 'node:assert/strict';
+import {prepareMagicLink} from '../public/magic-link.js';
+const control=()=>({disabled:false,handlers:{},addEventListener(type,fn){this.handlers[type]=fn;},click(){return this.handlers.click();}});
+let verified=0,shown=0,cleared=0,signedIn=0,login=0,release;
+const button=control(),requestNew=control();
+const options={token:'test-token',button,requestNew,clearUrl:()=>cleared++,showConfirmation:()=>shown++,showLogin:()=>login++,showStatus:()=>{},verify:async token=>{assert.equal(token,'test-token');verified++;await new Promise(r=>release=r);},signedIn:()=>signedIn++};
+assert.equal(prepareMagicLink(options),true);
+assert.equal(shown,1);assert.equal(cleared,1);assert.equal(verified,0,'page opening must never redeem token');
+const click=button.click();assert.equal(verified,1);assert.equal(button.disabled,true);
+await button.click();assert.equal(verified,1,'double click must not redeem twice');
+release();await click;assert.equal(signedIn,1);await button.click();assert.equal(verified,1);
+let failure='';const failedButton=control(),newButton=control();
+prepareMagicLink({...options,button:failedButton,requestNew:newButton,verify:async()=>{throw Error('Link expired');},showStatus:message=>failure=message});
+await failedButton.click();assert.equal(failure,'Link expired');assert.equal(failedButton.disabled,false);await newButton.click();assert.equal(login,1);
+assert.equal(prepareMagicLink({...options,token:''}),false);
+console.log('PASS: opening links does not redeem them; explicit Continue click, double-click protection, error display, and request-new-link flow.');

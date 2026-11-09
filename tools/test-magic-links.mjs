@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import http from 'node:http';
 import {createHmac,createHash,randomBytes} from 'node:crypto';
 import pg from 'pg';
@@ -14,7 +14,9 @@ const verify=t=>originalFetch(base+'/api/auth/verify',{method:'POST',headers:{'C
 let id;
 try{
 id=(await db.query("INSERT INTO vm_members(email) VALUES('auth-regression@example.org') ON CONFLICT(email) DO UPDATE SET email=excluded.email RETURNING id")).rows[0].id;
-const long=await token();assert.ok(long.length>500);const valid=await verify(long);assert.equal(valid.status,200,'valid token longer than 500 characters must work');assert.ok(valid.headers.get('set-cookie')?.includes('semcme_member='));assert.equal((await verify(long)).status,401,'replay rejected');
+const long=await token();assert.ok(long.length>500);for (const method of ['GET','HEAD']) { const landing=await originalFetch(base+'/?token='+encodeURIComponent(long),{method});assert.equal(landing.status,200); }
+assert.equal((await db.query('SELECT used_at FROM vm_magic_links WHERE token_hash=$1',[createHash('sha256').update(long).digest('base64url')])).rows[0].used_at,null,'scanner landing requests must not consume link');
+const valid=await verify(long);assert.equal(valid.status,200,'valid token longer than 500 characters must work');assert.ok(valid.headers.get('set-cookie')?.includes('semcme_member='));assert.equal((await verify(long)).status,401,'replay rejected');
 assert.equal((await verify(await token(Date.now()-1000))).status,401,'expired rejected');const fresh=await token();assert.equal((await verify(fresh+'.extra')).status,401,'extra segments rejected');assert.equal((await verify(fresh.slice(0,-2)+'XX')).status,401,'tampering rejected');assert.equal((await verify(fresh)).status,200,'rejected attempts do not consume valid link');
 console.log('PASS: long sign-in links, session cookie, single-use enforcement, expiration, malformed and tampered tokens.');
 }finally{await db.query('DELETE FROM vm_magic_links WHERE member_id=$1',[id]);await db.query('DELETE FROM vm_members WHERE id=$1',[id]);await db.end();globalThis.fetch=originalFetch;await new Promise(r=>server.close(r));}

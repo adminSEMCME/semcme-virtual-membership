@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "check": "node --check server.js && node --check public/admin.js && node --check public/admin-catalog.js && node --check public/app.js && node --check public/member-catalog.js && node --check data/program-sync.js && node --check data/library-catalog.js",
-    "test": "node tools/test-program-sync.mjs && node tools/test-admin-submit.mjs && node tools/test-library-taxonomy.mjs",
+    "check": "node --check server.js && node --check public/admin.js && node --check public/admin-catalog.js && node --check public/app.js && node --check public/member-catalog.js && node --check public/magic-link.js && node --check data/program-sync.js && node --check data/library-catalog.js",
+    "test": "node tools/test-program-sync.mjs && node tools/test-admin-submit.mjs && node tools/test-library-taxonomy.mjs && node tools/test-magic-link-confirmation.mjs",
     "test:library-schema": "node tools/test-library-schema.mjs",
     "test:library-admin": "node tools/test-library-admin.mjs",
     "test:library-import": "node tools/test-library-import.mjs",

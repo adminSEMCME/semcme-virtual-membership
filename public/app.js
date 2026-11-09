@@ -1,4 +1,5 @@
 import { initializeMemberCatalog } from './member-catalog.js';
+import { prepareMagicLink } from './magic-link.js';
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const esc = (s) =>
@@ -183,19 +184,20 @@ async function verifyMagicLink() {
   const params = new URLSearchParams(location.search);
   const token = params.get("token");
   if (!token) return false;
-  status($("#loginForm"), "Signing you in…");
-  try {
-    await api("/api/auth/verify", {
+  return prepareMagicLink({
+    token,
+    button: $('#continueSignIn'),
+    requestNew: $('#requestNewSignIn'),
+    clearUrl: () => history.replaceState(null, '', location.pathname),
+    showConfirmation: () => { $('#loginForm').classList.add('hidden'); $('#confirmSignIn').classList.remove('hidden'); },
+    showLogin: () => { $('#confirmSignIn').classList.add('hidden'); $('#loginForm').classList.remove('hidden'); $('#loginForm input[name="email"]').focus(); },
+    showStatus: (message, type) => status($('#confirmSignIn'), esc(message), type),
+    verify: token => api("/api/auth/verify", {
       method: "POST",
       body: JSON.stringify({ token }),
-    });
-    history.replaceState(null, "", location.pathname);
-    await loadLibrary();
-  } catch (x) {
-    history.replaceState(null, "", location.pathname);
-    status($("#loginForm"), esc(x.message));
-  }
-  return true;
+    }),
+    signedIn: loadLibrary,
+  });
 }
 
 const dialog = $("#supportDialog");
