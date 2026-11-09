@@ -1,3 +1,4 @@
+import { initializeMemberCatalog } from './member-catalog.js';
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const esc = (s) =>
@@ -94,161 +95,9 @@ $("#logout").addEventListener("click", async () => {
   location.reload();
 });
 
-const icon = (type) =>
-  ({ recording: "▶", playlist: "▤", course: "✦", resource: "↗" })[type] || "•";
-
-function youtubeEmbedUrl(url, type) {
-  try {
-    const u = new URL(url);
-    const host = u.hostname.replace(/^www\./, "");
-    if (!["youtube.com", "youtu.be"].includes(host)) return "";
-
-    const list = u.searchParams.get("list");
-    if (type === "playlist" && list) {
-      return `https://www.youtube.com/embed/videoseries?list=${encodeURIComponent(list)}`;
-    }
-
-    const id = host === "youtu.be" ? u.pathname.slice(1) : u.searchParams.get("v");
-    if (id) return `https://www.youtube.com/embed/${encodeURIComponent(id)}`;
-    if (list) return `https://www.youtube.com/embed/videoseries?list=${encodeURIComponent(list)}`;
-  } catch {
-    return "";
-  }
-  return "";
-}
-
-function resourceCard(r) {
-  return `<a class="resource-card" href="${esc(r.url)}" target="_blank" rel="noopener"><span class="resource-icon" aria-hidden="true">${icon(r.type)}</span><span class="resource-copy">${r.group ? `<span class="resource-group">${esc(r.group)}</span>` : ""}<strong>${esc(r.title)}</strong>${r.presenter || r.date || r.meta ? `<small>${esc([r.presenter, r.date, r.meta].filter(Boolean).join(" · "))}</small>` : ""}</span><span class="resource-arrow" aria-hidden="true">→</span></a>`;
-}
-
-function playlistPlayer(r) {
-  if (r.embed === false) return resourceCard(r);
-  const videos = (Array.isArray(r.videos) ? r.videos : [])
-    .map((video) => ({
-      ...video,
-      embedUrl: youtubeEmbedUrl(video.url, "recording"),
-    }))
-    .filter((video) => video.title && video.embedUrl);
-  if (!videos.length) return videoResource(r);
-
-  const first = videos[0];
-  const firstMeta = [first.presenter, first.date, first.meta, r.meta]
-    .filter(Boolean)
-    .join(" · ");
-  return `<article class="playlist-player">
-    <div class="playlist-main">
-      <div class="video-frame">
-        <iframe src="${esc(first.embedUrl)}" title="${esc(first.title)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-      </div>
-      <div class="video-copy">
-        <span class="resource-group">${esc(r.title)} · YouTube playlist</span>
-        <h3 class="playlist-video-title">${esc(first.title)}</h3>
-        <p class="playlist-video-meta"${firstMeta ? "" : " hidden"}>${esc(firstMeta)}</p>
-        <a class="playlist-video-link" href="${esc(first.url)}" target="_blank" rel="noopener">Open this video on YouTube <span>→</span></a>
-      </div>
-    </div>
-    <aside class="playlist-queue" aria-label="Videos in ${esc(r.title)}">
-      <div class="playlist-queue-head"><strong>${esc(r.title)}</strong><span>${videos.length} ${videos.length === 1 ? "video" : "videos"}</span></div>
-      ${videos
-        .map((video, index) => {
-          const meta = [video.presenter, video.date, video.meta, r.meta]
-            .filter(Boolean)
-            .join(" · ");
-          return `<button type="button" class="${index === 0 ? "active" : ""}" data-playlist-video data-video-url="${esc(video.url)}" data-embed-url="${esc(video.embedUrl)}" data-video-title="${esc(video.title)}" data-video-meta="${esc(meta)}" aria-current="${index === 0 ? "true" : "false"}"><span>${index + 1}</span><strong>${esc(video.title)}</strong></button>`;
-        })
-        .join("")}
-    </aside>
-  </article>`;
-}
-
-function videoResource(r) {
-  if (r.embed === false) return resourceCard(r);
-  const embedUrl = youtubeEmbedUrl(r.url, r.type);
-  if (!embedUrl) return resourceCard(r);
-
-  const label = r.type === "playlist" ? "YouTube playlist" : "Recording";
-  const isPlaylist = r.type === "playlist";
-  return `<article class="video-card ${isPlaylist ? "playlist-card" : ""}">
-    <div class="video-frame">
-      <iframe src="${esc(embedUrl)}" title="${esc(r.title)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-    </div>
-    <div class="video-copy">
-      <span class="resource-group">${esc(r.group || label)}</span>
-      <h3>${esc(r.title)}</h3>
-      ${r.presenter || r.date || r.meta ? `<p>${esc([r.presenter, r.date, r.meta].filter(Boolean).join(" · "))}</p>` : ""}
-      ${isPlaylist ? `<p>YouTube manages this playlist. New videos added there will appear in the playlist player automatically.</p>` : ""}
-      <a href="${esc(r.url)}" target="_blank" rel="noopener">${isPlaylist ? "Open full playlist" : "Open on YouTube"} <span>→</span></a>
-    </div>
-  </article>`;
-}
-
-function resourceCollection(resources, archive = false) {
-  const hasVideo = resources.some((r) => r.embed !== false && youtubeEmbedUrl(r.url, r.type));
-  const className = hasVideo ? "video-grid" : archive ? "archive-grid" : "resource-list";
-  return `<div class="${className}">${resources.map((r) => (hasVideo ? (r.type === "playlist" ? playlistPlayer(r) : videoResource(r)) : resourceCard(r))).join("")}</div>`;
-}
-
-$("#programView").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-playlist-video]");
-  if (!button) return;
-
-  const player = button.closest(".playlist-player");
-  const embedUrl = button.dataset.embedUrl;
-  const title = button.dataset.videoTitle;
-  const meta = button.dataset.videoMeta;
-  if (!player || !embedUrl || !title) return;
-
-  const frame = player.querySelector("iframe");
-  const metaElement = player.querySelector(".playlist-video-meta");
-  frame.src = embedUrl;
-  frame.title = title;
-  player.querySelector(".playlist-video-title").textContent = title;
-  metaElement.textContent = meta;
-  metaElement.hidden = !meta;
-  player.querySelector(".playlist-video-link").href = button.dataset.videoUrl;
-  player.querySelectorAll("[data-playlist-video]").forEach((item) => {
-    const active = item === button;
-    item.classList.toggle("active", active);
-    item.setAttribute("aria-current", active ? "true" : "false");
-  });
-});
-
-function renderProgram(slug, updateHash = true) {
-  const p =
-    library.programs.find((x) => x.slug === slug) || library.programs[0];
-  activeSlug = p.slug;
-  $$("#programNav button").forEach((b) =>
-    b.setAttribute(
-      "aria-current",
-      b.dataset.slug === p.slug ? "page" : "false",
-    ),
-  );
-  $("#programSelect").value = p.slug;
-  const count = p.current.length + p.archives.length;
-  $("#programView").innerHTML =
-    `<header class="program-head"><div><span class="mini-kicker">Program area</span><h1>${esc(p.name)}</h1><p>${esc(p.description)}</p></div><span class="count-badge">${count} ${count === 1 ? "resource" : "resources"}</span></header>
-    <section class="content-section"><div class="section-title"><h2>Upcoming programs</h2><span>Registration & events</span></div>${p.upcoming?.length ? resourceCollection(p.upcoming) : `<div class="empty-state compact">No upcoming programs posted.</div>`}</section>
-    <section class="content-section"><div class="section-title"><h2>Current & previous academic year</h2><span>Programs & recordings</span></div>${p.current.length ? resourceCollection(p.current) : `<div class="empty-state compact">No current programs or recordings posted.</div>`}</section>
-    <section class="content-section"><div class="section-title"><h2>Archive</h2><span>Prior academic years</span></div>${p.archives.length ? resourceCollection(p.archives, true) : `<div class="empty-state compact">No archived resources posted.</div>`}</section>`;
-  if (updateHash) history.replaceState(null, "", `#${p.slug}`);
-}
 function renderLibrary() {
   renderEvent(0);
-  $("#programNav").innerHTML = library.programs
-    .map(
-      (p) =>
-        `<button data-slug="${esc(p.slug)}"><span>${esc(p.short)}</span>${esc(p.name)}</button>`,
-    )
-    .join("");
-  $("#programSelect").innerHTML = library.programs
-    .map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`)
-    .join("");
-  $("#programNav").onclick = (e) => {
-    const b = e.target.closest("button");
-    if (b) renderProgram(b.dataset.slug);
-  };
-  $("#programSelect").onchange = (e) => renderProgram(e.target.value);
-  renderProgram(location.hash.slice(1) || activeSlug, false);
+  initializeMemberCatalog({ api, esc });
 }
 const eventSignature = (events = []) =>
   events
@@ -257,11 +106,7 @@ const eventSignature = (events = []) =>
 async function syncHeroEvents() {
   if (!library) return;
   try {
-    const result = await api("/api/library");
-    if (JSON.stringify(result.programs) !== JSON.stringify(library.programs)) {
-      library.programs = result.programs;
-      renderLibrary();
-    }
+    const result = await api("/api/virtual-events");
     if (eventSignature(result.events) === eventSignature(library.events)) return;
     const currentId = library.events?.[activeEvent]?.id;
     library.events = result.events || [];

@@ -6,6 +6,7 @@
     <title>SEMCME Membership Admin</title>
     <link rel="stylesheet" href="/styles.css" />
     <link rel="stylesheet" href="/admin.css" />
+    <link rel="stylesheet" href="/admin-catalog.css" />
   </head>
   <body class="admin-body">
     <div class="utility-bar">
@@ -57,11 +58,104 @@
           </div>
         </div>
         <div id="stats" class="stats"></div>
+        <section id="catalogWorkspace" class="admin-panel catalog-workspace" aria-labelledby="catalogTitle">
+          <div class="panel-title">
+            <div><span class="mini-kicker">Library organization</span><h2 id="catalogTitle">Materials, categories &amp; series</h2></div>
+            <button id="catalogRefresh" type="button" class="outline-button">Refresh library</button>
+          </div>
+          <p class="catalog-notice">Manage the member library here. Changes appear for members when they reload the page. Assign only confirmed category connections; leave unfinished reviews unchecked.</p>
+          <details class="catalog-help">
+            <summary>How to manage materials, categories, and series</summary>
+            <h3>Add or edit a material</h3>
+            <p>On the Materials tab, search for an existing title and select it, or choose Add material. Enter the title, full link, and material type. Add presenter names and a date when known. Keep Play YouTube videos within the site checked for recordings.</p>
+            <h3>Choose where it appears</h3>
+            <p>Check every confirmed competency and survey area. A material can appear in several categories. Removing a check removes that connection after saving. Category assignments from the approved November 2026 mapping document have already been added.</p>
+            <p>Mark each group's review complete only when its mapping decision is finished. Leave unknown or to-be-determined groups unchecked. Materials with unfinished reviews remain in All Materials and any confirmed categories.</p>
+            <p><strong>Additional Topics:</strong> complete both reviews and leave all categories unchecked only when it has been confirmed that neither group applies. A blank mapping alone does not mean Additional Topics.</p>
+            <h3>Group related sessions</h3>
+            <p>Use Series &amp; sessions to create or rename a series. Then edit each material, choose that series, and enter its session order (1, 2, 3, and so on). Save each material separately. Each session keeps its own category connections. Deleting a series keeps its materials.</p>
+            <h3>Manage categories</h3>
+            <p>Use Categories to add, rename, or hide a competency or survey area. Hiding a category keeps its assignments but removes the category from member browsing. A category must have no assigned materials before it can be deleted.</p>
+            <h3>Save, hide, or remove</h3>
+            <p>Click Save and confirm the change. Save the current form before editing another tab. To temporarily hide a material, uncheck Include in the updated member library and save. Delete material permanently removes it and its category connections from this library. The original imported source entry is kept separately.</p>
+            <p>Use Refresh library to load saved changes. The Needs review filter helps find unfinished mappings. Internal review notes and original-location information are visible only to administrators.</p>
+            <h3>Featured programs and older records</h3>
+            <p>The original program records below are retained for featured-program management and reference. They do not automatically add or update entries in the member material list. Use Materials above for new recordings, links, and category changes.</p>
+          </details>
+          <p id="catalogStatus" class="form-status" role="status" aria-live="polite"></p>
+          <div id="catalogControls" hidden>
+            <div class="catalog-tabs" role="tablist" aria-label="Library management">
+              <button type="button" id="catalogTabMaterials" role="tab" aria-selected="true" aria-controls="catalogMaterials" data-catalog-tab="catalogMaterials">Materials</button>
+              <button type="button" id="catalogTabCategories" role="tab" aria-selected="false" aria-controls="catalogCategories" data-catalog-tab="catalogCategories" tabindex="-1">Categories</button>
+              <button type="button" id="catalogTabSeries" role="tab" aria-selected="false" aria-controls="catalogSeries" data-catalog-tab="catalogSeries" tabindex="-1">Series &amp; sessions</button>
+            </div>
+            <section id="catalogMaterials" role="tabpanel" aria-labelledby="catalogTabMaterials">
+              <div class="catalog-grid">
+                <div class="catalog-browser">
+                  <div class="catalog-heading"><h3>Materials</h3><button type="button" id="catalogNewMaterial" class="outline-button">Add material</button></div>
+                  <label>Search materials<input id="catalogSearch" type="search" placeholder="Title, presenter, or category" /></label>
+                  <label>Show<select id="catalogFilter"><option value="all">All materials</option><option value="pending">Needs review</option><option value="additional">Additional Topics</option><option value="hidden">Hidden materials</option></select></label>
+                  <p id="catalogCount" class="field-help"></p>
+                  <div id="catalogMaterialRows" class="catalog-list"></div>
+                </div>
+                <form id="catalogMaterialForm" class="field-grid catalog-editor">
+                  <h3 id="catalogMaterialHeading" class="wide">Add a material</h3>
+                  <input name="id" type="hidden" /><input name="updatedAt" type="hidden" />
+                  <label class="wide">Title<input name="title" required maxlength="500" /></label>
+                  <label class="wide">Video or resource URL<input name="url" type="url" required maxlength="4000" placeholder="https://www.youtube.com/watch?v=..." /><small>Add individual video links when sessions need different tags.</small></label>
+                  <label>Type<select name="type"><option value="recording">Video recording</option><option value="playlist">Whole playlist</option><option value="course">Course or registration</option><option value="resource">Other resource</option></select></label>
+                  <label>Presenter<input name="presenter" maxlength="1000" /></label>
+                  <label>Date<input name="itemDate" maxlength="150" placeholder="November 9, 2026" /></label>
+                  <label>Short note<input name="meta" maxlength="1000" /></label>
+                  <label class="wide">Description<textarea name="description" rows="2" maxlength="5000"></textarea></label>
+                  <fieldset class="wide catalog-tag-group"><legend>ACGME Competencies</legend><p>Choose every confirmed connection.</p><div id="catalogCompetencyTags" class="catalog-checkboxes"></div>
+                    <label class="catalog-review"><input name="competencyReviewed" type="checkbox" /> Competency review is complete</label>
+                  </fieldset>
+                  <fieldset class="wide catalog-tag-group"><legend>ACGME Survey Areas</legend><p>Choose every confirmed connection.</p><div id="catalogSurveyTags" class="catalog-checkboxes"></div>
+                    <label class="catalog-review"><input name="surveyReviewed" type="checkbox" /> Survey-area review is complete</label>
+                  </fieldset>
+                  <p id="catalogPlacement" class="wide catalog-placement" aria-live="polite"></p>
+                  <label class="wide">Internal review notes<textarea name="reviewNotes" rows="2" maxlength="10000" placeholder="Questions, proposed connections, or the reason no category applies"></textarea><small>For staff only. Suggested connections should stay here until confirmed.</small></label>
+                  <label>Series<select name="seriesId"><option value="">No series</option></select></label>
+                  <label>Session order<input name="sessionPosition" type="number" min="0" max="100000" step="1" value="0" /><small>Use 1, 2, 3 for related sessions.</small></label>
+                  <label>Display order<input name="position" type="number" min="-100000" max="100000" step="1" value="0" /></label>
+                  <div class="catalog-checkboxes"><label><input name="enabled" type="checkbox" checked /> Include in the updated member library</label><label><input name="embedEnabled" type="checkbox" checked /> Play YouTube videos within the site</label></div>
+                  <p id="catalogSources" class="wide field-help"></p>
+                  <div class="form-actions wide"><button type="submit" class="primary-button">Save material</button><button type="button" id="catalogDeleteMaterial" class="danger-button" hidden>Delete material</button></div>
+                </form>
+              </div>
+            </section>
+            <section id="catalogCategories" role="tabpanel" aria-labelledby="catalogTabCategories" hidden>
+              <p>Manage category names and order. Hiding a category keeps its assignments; deleting a category requires removing its assignments first.</p>
+              <div class="catalog-grid"><div><div class="catalog-heading"><h3>Categories</h3><button id="catalogNewTag" type="button" class="outline-button">Add category</button></div><div id="catalogTagRows" class="catalog-list"></div></div>
+                <form id="catalogTagForm" class="field-grid catalog-editor"><h3 class="wide" id="catalogTagHeading">Add a category</h3><input name="id" type="hidden" /><input name="updatedAt" type="hidden" />
+                  <label>Group<select name="taxonomy"><option value="competency">ACGME Competencies</option><option value="survey">ACGME Survey Areas</option></select></label>
+                  <label>Display order<input name="position" type="number" min="-100000" max="100000" value="0" /></label>
+                  <label class="wide">Category name<input name="name" required maxlength="200" /></label>
+                  <label class="wide">Description<textarea name="description" maxlength="3000" rows="3"></textarea></label>
+                  <label class="catalog-check wide"><input name="enabled" type="checkbox" checked /> Show this category in the updated member library</label>
+                  <div class="form-actions wide"><button type="submit" class="primary-button">Save category</button><button type="button" id="catalogDeleteTag" class="danger-button" hidden>Delete category</button></div>
+                </form>
+              </div>
+            </section>
+            <section id="catalogSeries" role="tabpanel" aria-labelledby="catalogTabSeries" hidden>
+              <p>Create a series here, then choose it and set the session order on each material. Each session keeps its own category tags. Removing a series keeps its materials.</p>
+              <div class="catalog-grid"><div><div class="catalog-heading"><h3>Series</h3><button id="catalogNewSeries" type="button" class="outline-button">Add series</button></div><div id="catalogSeriesRows" class="catalog-list"></div></div>
+                <form id="catalogSeriesForm" class="field-grid catalog-editor"><h3 class="wide" id="catalogSeriesHeading">Add a series</h3><input name="id" type="hidden" /><input name="updatedAt" type="hidden" />
+                  <label class="wide">Series title<input name="title" required maxlength="500" /></label>
+                  <label class="wide">Description<textarea name="description" maxlength="5000" rows="3"></textarea></label>
+                  <label>Display order<input name="position" type="number" min="-100000" max="100000" value="0" /></label>
+                  <div class="form-actions wide"><button type="submit" class="primary-button">Save series</button><button type="button" id="catalogDeleteSeries" class="danger-button" hidden>Delete series</button></div>
+                </form>
+              </div>
+            </section>
+          </div>
+        </section>
         <div class="admin-grid">
           <section class="admin-panel content-panel full">
             <div class="panel-title">
               <div>
-                <h2>Library content</h2>
+                <h2>Original program records</h2>
                 <p>
                   Follow the steps below to control what members see in each
                   program area.

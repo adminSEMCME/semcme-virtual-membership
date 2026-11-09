@@ -8,6 +8,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { programs as defaultPrograms, defaultBanner, defaultEvents } from './data/library.js';
 import { prefixTables } from './data/database-tables.js';
 import { postgresOptions } from './data/postgres-options.js';
+import { createLibraryCatalog } from './data/library-catalog.js';
+import { memberCatalog } from './data/library-taxonomy.js';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
@@ -130,11 +132,25 @@ async function postgresDatabase() {
   const provider = process.env.DATABASE_PROVIDER || 'neon';
   if (!['neon', 'postgres'].includes(provider)) throw new Error('Unsupported DATABASE_PROVIDER.');
   let query;
+  let transaction = async () => { throw Object.assign(new Error('Library organization requires the PostgreSQL connection.'), { status: 503 }); };
   if (provider === 'postgres') {
     const { default: pg } = await import('pg');
     const pool = new pg.Pool(postgresOptions(databaseUrl));
     pool.on('error', () => console.error('Idle database connection failed.'));
     query = async (statement, params = []) => (await pool.query(prefixTables(statement, prefix), params)).rows;
+    transaction = async work => {
+      const client = await pool.connect();
+      const all = async (statement, params = []) => (await client.query(prefixTables(statement, prefix), params)).rows;
+      try {
+        await client.query('BEGIN');
+        const result = await work({ all, get: async (s, p) => (await all(s, p))[0] || null, run: all });
+        await client.query('COMMIT');
+        return result;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally { client.release(); }
+    };
   } else {
     const { neon } = await import('@neondatabase/serverless');
     const sql = neon(databaseUrl);
@@ -142,6 +158,7 @@ async function postgresDatabase() {
   }
   return {
     type: 'postgres',
+    transaction,
     async exec(statement) {
       for (const part of statement.split(';').map((value) => value.trim()).filter(Boolean)) {
         await query(part);
@@ -167,6 +184,7 @@ async function createDatabase() {
 }
 
 const db = await createDatabase();
+const catalog = createLibraryCatalog(db);
 await db.exec(db.type === 'postgres' ? `
   CREATE TABLE IF NOT EXISTS registrations (
     id SERIAL PRIMARY KEY, first_name TEXT NOT NULL, last_name TEXT NOT NULL,
@@ -1635,6 +1653,11 @@ async function api(req, res, path) {
     try { events = await getVirtualEvents(); } catch(e) { console.error(e.message); }
     return json(res,200,{banner:defaultBanner,events,programs:await getLibraryPrograms()});
   }
+  if (path === '/api/catalog' && req.method === 'GET') {
+    if (!member(req)) return json(res,401,{error:'Member login required.'});
+    try { return json(res,200,memberCatalog(await catalog.read())); }
+    catch { return json(res,503,{error:'The materials could not load. Please try again.'}); }
+  }
   if (path === '/api/virtual-events' && req.method === 'GET') {
     if (!member(req)) return json(res,401,{error:'Member login required.'});
     let events = [];
@@ -1686,6 +1709,24 @@ async function api(req, res, path) {
       console.error(e.message);
       res.writeHead(302, { ...headers, Location:'/admin.html?cc=failed' });
       return res.end();
+    }
+  }
+  if (path === '/api/admin/catalog' || path.startsWith('/api/admin/catalog/')) {
+    if (!admin(req)) return json(res,401,{error:'Admin login required.'});
+    try {
+      if (path === '/api/admin/catalog' && req.method === 'GET') return json(res,200,await catalog.read());
+      const kind = path.slice('/api/admin/catalog/'.length);
+      const save = { material: catalog.saveMaterial, tag: catalog.saveTag, series: catalog.saveSeries }[kind];
+      if (!save) return json(res,404,{error:'Not found'});
+      if (req.method === 'POST') return json(res,200,{ok:true,...await save(await readBody(req))});
+      if (req.method === 'DELETE') return json(res,200,{ok:true,...await catalog.remove(kind,await readBody(req))});
+      return json(res,405,{error:'Method not allowed'});
+    } catch (error) {
+      if (error.code === '42P01' || error.message?.includes('no such table')) {
+        return json(res,503,{error:'Library organization is not available yet. Complete the category setup first.'});
+      }
+      if (!error.status) console.error(error);
+      return json(res,error.status || 500,{error:error.status ? error.message : 'Unable to update the library. Please try again.'});
     }
   }
   if (path === '/api/admin/dashboard' && req.method === 'GET') {

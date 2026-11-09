@@ -1,0 +1,36 @@
+.catalog-workspace { margin-bottom: 30px; }
+.catalog-help { border: 1px solid #c7d8e4; border-radius: 8px; padding: 16px 20px; margin: 18px 0; line-height: 1.6; }
+.catalog-help summary { cursor: pointer; font-weight: 700; color: #174569; }
+.catalog-help h3 { color: #174569; margin: 22px 0 8px; }
+.catalog-help p { margin: 8px 0; }
+.catalog-workspace [hidden] { display: none !important; }
+.catalog-workspace .panel-title { gap: 20px; align-items: center; }
+.catalog-notice { padding: 14px 18px; border-left: 4px solid var(--blue); background: #edf5fb; line-height: 1.5; }
+.catalog-tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid #d5e0e8; padding: 10px 0 16px; margin-bottom: 24px; }
+.catalog-tabs button { padding: 12px 18px; border: 1px solid #b7ccdc; border-radius: 6px; background: white; color: #174569; font: inherit; font-weight: 700; }
+.catalog-tabs button[aria-selected="true"] { color: white; background: var(--blue); border-color: var(--blue); }
+.catalog-grid { display: grid; grid-template-columns: minmax(250px, 0.8fr) minmax(0, 1.5fr); gap: 28px; align-items: start; }
+.catalog-heading { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.catalog-heading h3, .catalog-editor h3 { margin: 0; color: #174569; }
+.catalog-browser > label { margin-bottom: 14px; }
+.catalog-list { max-height: 680px; overflow-y: auto; border: 1px solid #d5e0e8; border-radius: 8px; }
+.catalog-list:empty { display: none; }
+.catalog-list > p { padding: 16px; }
+.catalog-list button { display: block; width: 100%; padding: 15px; text-align: left; border: 0; border-bottom: 1px solid #d5e0e8; color: #174569; background: #fff; font: inherit; overflow-wrap: anywhere; }
+.catalog-list button:hover, .catalog-list button[aria-current="true"] { background: #eaf3f9; }
+.catalog-list strong, .catalog-list small { display: block; }
+.catalog-list small { margin-top: 6px; color: #596a75; line-height: 1.45; }
+.catalog-editor { border: 1px solid #d5e0e8; border-radius: 10px; padding: 22px; background: #f9fbfd; }
+.catalog-tag-group { min-width: 0; margin: 0; border: 1px solid #c7d8e4; border-radius: 8px; padding: 15px; background: white; }
+.catalog-tag-group legend { font-weight: 700; color: #174569; padding: 0 6px; }
+.catalog-tag-group > p { margin: 0 0 12px; font-size: 14px; color: #596a75; }
+.catalog-checkboxes { display: grid; gap: 10px; }
+.catalog-checkboxes label, .catalog-review, .catalog-check { display: flex !important; flex-direction: row !important; align-items: flex-start; gap: 10px; font-weight: 400; }
+.catalog-workspace input[type="checkbox"] { width: 18px; height: 18px; min-height: 18px; flex: 0 0 18px; margin: 2px 0 0; accent-color: var(--blue); }
+.catalog-review { margin-top: 16px; padding-top: 14px; border-top: 1px solid #d5e0e8; font-weight: 700 !important; }
+.catalog-placement { margin: 0; padding: 14px; background: #eaf3f9; border-radius: 6px; line-height: 1.5; }
+.catalog-workspace button:focus-visible, .catalog-workspace input:focus-visible, .catalog-workspace select:focus-visible, .catalog-workspace textarea:focus-visible { outline: 3px solid #e89a16; outline-offset: 3px; }
+.catalog-workspace .form-actions { flex-wrap: wrap; }
+.catalog-workspace .form-status { min-height: 1.5em; }
+@media (max-width: 950px) { .catalog-grid { grid-template-columns: 1fr; } .catalog-list { max-height: 360px; } }
+@media (max-width: 540px) { .catalog-editor { padding: 14px; grid-template-columns: 1fr; } .catalog-tabs button { flex: 1 1 auto; } .catalog-heading { flex-wrap: wrap; } }

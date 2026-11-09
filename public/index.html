@@ -9,6 +9,7 @@
     />
     <title>SEMCME Virtual Membership</title>
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/member-catalog.css" />
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -91,22 +92,19 @@
 
       <section id="library" class="library hidden">
         <section id="featureBanner" class="feature-banner"></section>
-        <div class="library-layout">
-          <aside class="program-sidebar">
-            <div class="sidebar-heading">
-              <span class="mini-kicker">Explore the membership</span>
-              <h2>Programs</h2>
-            </div>
-            <nav id="programNav" aria-label="Educational programs"></nav>
-          </aside>
-          <div class="program-main">
-            <div class="mobile-program-select">
-              <label for="programSelect">Program area</label
-              ><select id="programSelect"></select>
-            </div>
-            <section id="programView" aria-live="polite"></section>
-          </div>
-        </div>
+        <section id="memberCatalog" class="member-catalog" aria-labelledby="catalogHeading">
+          <header class="catalog-intro"><span class="mini-kicker">Explore the membership</span><h1 id="catalogHeading">Find your next learning opportunity</h1><p>Choose an ACGME category, explore additional topics, or browse the full library.</p></header>
+          <nav class="browse-options" aria-label="Browse materials">
+            <button type="button" data-view="competency" aria-pressed="false">ACGME Competencies</button>
+            <button type="button" data-view="survey" aria-pressed="false">ACGME Survey Areas</button>
+            <button type="button" data-view="additional" aria-pressed="false">Additional Topics</button>
+            <button type="button" data-view="all" aria-pressed="false">All Materials</button>
+          </nav>
+          <div id="memberCategories" class="browse-categories" role="group" aria-label="Choose a category" hidden></div>
+          <div id="memberSearchBar" class="browse-search" hidden><label for="memberSearch">Search these materials</label><input id="memberSearch" type="search" placeholder="Search by title, presenter, or category" /><button id="memberGuideButton" type="button">Show browsing guide</button></div>
+          <p id="memberCatalogStatus" role="status" aria-live="polite"></p>
+          <div id="memberResults"></div>
+        </section>
         <section class="support-strip">
           <div>
             <span class="mini-kicker">Member support</span>

@@ -1,3 +1,5 @@
+import { initializeCatalogAdmin } from './admin-catalog.js';
+
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
   String(s ?? "").replace(
@@ -282,6 +284,8 @@ function renderSupport(support) {
       .join("") || '<tr><td colspan="4">No support requests yet.</td></tr>';
 }
 
+const catalogAdmin = initializeCatalogAdmin({ api, esc, confirmAction, withLoading });
+
 async function load() {
   try {
     const d = await api("/api/admin/dashboard");
@@ -293,6 +297,7 @@ async function load() {
     renderInstitutionSegments(d.virtualInstitutionSegments || []);
     renderContent(d.libraryPrograms || []);
     renderSupport(d.support || []);
+    await catalogAdmin.load();
     const resourceCount = (d.libraryPrograms || []).reduce((sum, program) => sum + flattenResources(program).length, 0);
     $("#stats").innerHTML =
       `<div class="stat"><strong>${(d.libraryPrograms || []).length}</strong><span>program areas</span></div><div class="stat"><strong>${resourceCount}</strong><span>library items</span></div><div class="stat"><strong>${(d.members || []).length}</strong><span>members in database</span></div><div class="stat"><strong>${(d.support || []).filter((x) => x.status === "new").length}</strong><span>new questions</span></div>`;
@@ -571,6 +576,7 @@ $("#adminLogout").addEventListener("click", async (e) => {
     api("/api/admin/logout", { method: "POST" }),
   );
   dashboard = null;
+  catalogAdmin.reset();
   $("#dashboard").classList.add("hidden");
   $("#adminLogin").classList.remove("hidden");
 });
