@@ -21,7 +21,7 @@ export function initializeMemberCatalog({ api, esc }) {
   const $ = s => root.querySelector(s);
   let catalog, view = '', tagId = '';
   const results = $('#memberResults'), status = $('#memberCatalogStatus');
-  const guide = () => `<div class="browse-guide"><h2>Where would you like to start?</h2><dl><dt>ACGME Competencies</dt><dd>Choose a core competency to find related learning materials.</dd><dt>ACGME Survey Areas</dt><dd>Choose a survey area to explore related educational resources.</dd><dt>Additional Topics</dt><dd>Explore materials confirmed to cover topics outside both ACGME groups.</dd><dt>All Materials</dt><dd>See the complete library, including materials whose categories are still being reviewed.</dd></dl><p>Select a material's title to expand its details and watch available videos here.</p></div>`;
+  const guide = () => `<div class="browse-guide"><h2>Where would you like to start?</h2><dl><dt>ACGME Competencies</dt><dd>Choose a core competency to find related learning materials.</dd><dt>ACGME Survey Areas</dt><dd>Choose a survey area to explore related educational resources.</dd><dt>Browse by Topic</dt><dd>Explore familiar subject areas such as Faculty Development, OB/GYN, and Well-Being.</dd><dt>Additional Topics</dt><dd>Explore materials confirmed to cover topics outside both ACGME groups.</dd><dt>All Materials</dt><dd>See the complete library, including materials whose categories are still being reviewed.</dd></dl><p>Select a material's title to expand its details and watch available videos here.</p></div>`;
   function row(m) {
     return `<details class="material-row" data-material="${esc(m.id)}"><summary><span><strong>${esc(m.title)}</strong>${m.presenter || m.itemDate ? `<small>${esc([m.presenter,m.itemDate].filter(Boolean).join(' · '))}</small>` : ''}<span class="material-tags">${m.tags.map(t=>`<span>${esc(t.name)}</span>`).join('')}</span></span><span class="material-expand" aria-hidden="true">+</span></summary><div class="material-body">${m.description ? `<p>${esc(m.description)}</p>` : ''}${m.meta ? `<p>${esc(m.meta)}</p>` : ''}<div class="material-player"></div></div></details>`;
   }
@@ -51,7 +51,7 @@ export function initializeMemberCatalog({ api, esc }) {
     view=next; tagId=''; $('#memberSearch').value='';
     root.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===view)));
     const tags=catalog.tags.filter(t=>t.taxonomy===view);
-    $('#memberCategories').hidden=!['competency','survey'].includes(view);
+    $('#memberCategories').hidden=!['competency','survey','topic'].includes(view);
     $('#memberCategories').innerHTML=tags.map(t=>`<button type="button" data-tag="${esc(t.id)}" aria-pressed="false">${esc(t.name)}</button>`).join('');
     render();
   }

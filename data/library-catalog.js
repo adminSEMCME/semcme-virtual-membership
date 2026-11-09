@@ -109,16 +109,17 @@ export function createLibraryCatalog(db) {
           session_position=excluded.session_position,position=excluded.position,updated_at=CURRENT_TIMESTAMP`, values);
         await tx.run('DELETE FROM library_material_tags WHERE material_id=$1', [id]);
         for (const tagId of tagIds) await tx.run('INSERT INTO library_material_tags(material_id,tag_id) VALUES ($1,$2)', [id, tagId]);
+        await tx.run('UPDATE library_event_imports SET manual=true WHERE material_id=$1', [id]);
         return { id };
       });
     },
     async saveTag(body) {
       const id = text(body.id, 'Category ID', 200) || randomUUID();
       const name = text(body.name, 'Category name', 200, true);
-      if (!['competency', 'survey'].includes(body.taxonomy)) fail('Choose Competency or Survey Area.');
+      if (!['competency', 'survey', 'topic'].includes(body.taxonomy)) fail('Choose Competency, Survey Area, or Subject Topic.');
       return write(async tx => {
         const existing = await lock(tx, 'library_tags', body.id, body.updatedAt);
-        if (existing && existing.taxonomy !== body.taxonomy) fail('An existing category cannot be moved between the two groups.');
+        if (existing && existing.taxonomy !== body.taxonomy) fail('An existing category cannot be moved between category groups.');
         const slug = existing?.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
         if (!slug) fail('Use at least one letter or number in the category name.');
         await tx.run(`INSERT INTO library_tags(id,taxonomy,slug,name,description,position,enabled)
@@ -147,6 +148,7 @@ export function createLibraryCatalog(db) {
         if (kind === 'tag' && await tx.get('SELECT material_id FROM library_material_tags WHERE tag_id=$1 LIMIT 1', [id])) {
           fail('Materials still use this category. Remove those assignments first, or hide the category instead.', 409);
         }
+        if (kind === 'material') await tx.run('UPDATE library_event_imports SET suppressed=true WHERE material_id=$1', [id]);
         await tx.run(`DELETE FROM ${table} WHERE id=$1`, [id]);
         return { id };
       });

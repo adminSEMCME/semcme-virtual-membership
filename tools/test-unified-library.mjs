@@ -1,0 +1,33 @@
+﻿import assert from 'node:assert/strict';
+import pg from 'pg';
+import {readFile} from 'node:fs/promises';
+import {prefixTables} from '../data/database-tables.js';
+import {syncCatalogEvents} from '../data/catalog-event-sync.js';
+import {createLibraryCatalog} from '../data/library-catalog.js';
+import {materialReviewState} from '../data/library-taxonomy.js';
+const url=process.env.TEST_DATABASE_URL;
+if(!url||new URL(url).hostname!=='127.0.0.1'||!new URL(url).pathname.includes('test'))throw Error('Local test database required');
+const client=new pg.Client({connectionString:url});await client.connect();
+const all=async(s,p)=>(await client.query(prefixTables(s,'vm_'),p)).rows;
+const adapter={all,get:async(s,p)=>(await all(s,p))[0],run:all,transaction:async f=>{await client.query('BEGIN');try{const result=await f(adapter);await client.query('COMMIT');return result;}catch(e){await client.query('ROLLBACK');throw e;}}};
+try{
+const migration=await readFile('database/migrations/20261109-unify-library.sql','utf8');await client.query(migration);
+assert.equal(materialReviewState({competencyReviewed:true,surveyReviewed:true,tags:[{taxonomy:'topic'}]}).additionalTopics,true);
+const catalog=createLibraryCatalog(adapter);
+const sourceBefore=await all('SELECT * FROM library_resources ORDER BY id');
+const event={title:'Faculty Development test event',description:'Test',ctaUrl:'https://example.org/unified-event-test'};
+await syncCatalogEvents(adapter,[event]);
+let m=(await catalog.read()).materials.find(m=>m.url===event.ctaUrl);assert.ok(m);assert.equal(m.competencyReviewed,false);assert.ok(m.tags.some(t=>t.id==='topic-faculty-development'));
+const id=m.id;
+await syncCatalogEvents(adapter,[{...event,title:'Updated event title'}]);m=(await catalog.read()).materials.find(m=>m.id===id);assert.equal(m.title,'Updated event title');
+await syncCatalogEvents(adapter,[]);assert.equal((await catalog.read()).materials.find(m=>m.id===id).enabled,false);
+await syncCatalogEvents(adapter,[event]);m=(await catalog.read()).materials.find(m=>m.id===id);assert.equal(m.enabled,true);
+await catalog.saveMaterial({...m,title:'Admin title',tagIds:['competency-communication','topic-obgyn']});
+await syncCatalogEvents(adapter,[event]);m=(await catalog.read()).materials.find(m=>m.id===id);assert.equal(m.title,'Admin title');assert.deepEqual(m.tags.map(t=>t.id).sort(),['competency-communication','topic-obgyn']);
+await catalog.remove('material',m);await syncCatalogEvents(adapter,[event]);assert.ok(!(await catalog.read()).materials.some(m=>m.id===id));
+assert.deepEqual(await all('SELECT * FROM library_resources ORDER BY id'),sourceBefore);
+const existing=(await catalog.read()).materials.find(m=>m.tags.some(t=>t.taxonomy==='topic'));
+await client.query('BEGIN');await all("DELETE FROM library_material_tags WHERE material_id=$1 AND tag_id IN (SELECT id FROM library_tags WHERE taxonomy='topic')",[existing.id]);await client.query('COMMIT');
+await client.query(migration);assert.ok(!(await catalog.read()).materials.find(m=>m.id===existing.id).tags.some(t=>t.taxonomy==='topic'),'rerun preserves topic removals');
+console.log('PASS: subject topics independent of ACGME review; direct catalog imports; refresh, disappearance and return; admin overrides; deletion suppression; untouched original records; migration rerun preserves edits.');
+}finally{await client.end();}

@@ -6,7 +6,7 @@ export function materialReviewState(material) {
   const surveyReviewed = material.surveyReviewed === true;
   return {
     needsReview: !competencyReviewed || !surveyReviewed,
-    additionalTopics: competencyReviewed && surveyReviewed && tags.length === 0,
+    additionalTopics: competencyReviewed && surveyReviewed && !tags.some(t => t.taxonomy !== 'topic'),
   };
 }
 
@@ -14,7 +14,7 @@ export function materialMatchesBrowse(material, { view = 'all', tagId = '' } = {
   if (material.enabled === false) return false;
   if (view === 'all') return true;
   if (view === 'additional') return materialReviewState(material).additionalTopics;
-  if (view !== 'competency' && view !== 'survey') return false;
+  if (!['competency','survey','topic'].includes(view)) return false;
   return (material.tags || []).some(tag => tag.enabled !== false && tag.taxonomy === view && tag.id === tagId);
 }
 

@@ -16,6 +16,7 @@ assert.equal(materialIdentity('https://youtu.be/abcdefghijk?t=50').identityKey, 
 assert.throws(() => materialIdentity('javascript:alert(1)'));
 const pool = new pg.Pool({ connectionString: url });
 await pool.query(await readFile(new URL('../database/migrations/20261109-library-categories.sql', import.meta.url), 'utf8'));
+await pool.query(await readFile(new URL('../database/migrations/20261109-unify-library.sql', import.meta.url), 'utf8'));
 const realFetch = globalThis.fetch;
 globalThis.fetch = async () => { throw new Error('External networking disabled in catalog tests'); };
 let server;
@@ -34,7 +35,7 @@ try {
   assert.equal((await request('/api/admin/catalog/material', 'DELETE', {})).status, 401);
   cookie = (await request('/api/admin/login', 'POST', { password: 'test-password' })).cookie;
   let catalog = (await request('/api/admin/catalog')).data;
-  assert.equal(catalog.tags.length, 14);
+  assert.equal(catalog.tags.filter(t => t.taxonomy !== 'topic').length, 14);
   const original = (await pool.query('SELECT row_to_json(r)::text AS row FROM vm_library_resources r ORDER BY id')).rows;
   const series = await request('/api/admin/catalog/series', 'POST', { title: 'Testing series' });
   assert.equal(series.status, 200);

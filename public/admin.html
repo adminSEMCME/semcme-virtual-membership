@@ -69,10 +69,10 @@
             <p class="catalog-help-start">Start in <strong>Materials</strong> for everyday updates. Save each form before switching tabs.</p>
             <div class="catalog-help-grid">
               <section><h3>1. Add or edit</h3><ul><li>Search and select a title, or click <strong>Add material</strong>.</li><li>Enter the title, link, and type. Add presenter and date when known.</li><li>Click <strong>Save material</strong> and confirm.</li></ul></section>
-              <section><h3>2. Choose categories</h3><ul><li>Check every confirmed competency and survey area.</li><li>Uncheck a category to remove that connection.</li><li>Leave unfinished review boxes unchecked.</li></ul></section>
-              <section><h3>Where materials appear</h3><ul><li><strong>All Materials:</strong> every visible material.</li><li><strong>Category pages:</strong> materials assigned to that category.</li><li><strong>Additional Topics:</strong> both reviews complete, with no categories assigned. Only use this when neither group applies.</li></ul></section>
+              <section><h3>2. Choose categories</h3><ul><li>Check every confirmed competency and survey area. Also select the relevant subject topics.</li><li>Uncheck a category to remove that connection.</li><li>Leave unfinished review boxes unchecked.</li></ul></section>
+              <section><h3>Where materials appear</h3><ul><li><strong>All Materials:</strong> every visible material.</li><li><strong>Category pages:</strong> materials assigned to that category.</li><li><strong>Additional Topics:</strong> both ACGME reviews complete, with no ACGME categories assigned. Subject topics can still be selected. Only use this when neither group applies.</li></ul></section>
               <section><h3>Group sessions</h3><ol><li>Create a group in <strong>Series &amp; sessions</strong>.</li><li>Open each material and choose its series.</li><li>Set <strong>Session order</strong> to 1, 2, 3, etc., then save.</li></ol></section>
-              <section><h3>Hide or remove</h3><ul><li><strong>Hide:</strong> uncheck Include in the updated member library and save.</li><li><strong>Delete:</strong> permanently removes the material and its category connections.</li><li>Use <strong>Categories</strong> to rename or hide categories.</li></ul></section>
+              <section><h3>Hide or remove</h3><ul><li><strong>Hide:</strong> uncheck Include in the updated member library and save.</li><li><strong>Delete:</strong> permanently removes the material and its category connections.</li><li>Use <strong>Categories</strong> to add, rename, or hide competencies, survey areas, and subject topics.</li></ul></section>
               <section><h3>Track unfinished work</h3><ul><li>Use the <strong>Needs review</strong> filter.</li><li><strong>Internal review notes</strong> are for admins only.</li><li>Members see saved changes after reloading the page.</li></ul></section>
             </div>
           </details>
@@ -108,6 +108,7 @@
                   <fieldset class="wide catalog-tag-group"><legend>ACGME Survey Areas</legend><p>Choose every confirmed connection.</p><div id="catalogSurveyTags" class="catalog-checkboxes"></div>
                     <label class="catalog-review"><input name="surveyReviewed" type="checkbox" /> Survey-area review is complete</label>
                   </fieldset>
+                  <fieldset class="wide catalog-tag-group"><legend>Subject topics</legend><p>Choose all relevant subjects, such as Faculty Development or OB/GYN. These can overlap with ACGME categories.</p><div id="catalogTopicTags" class="catalog-checkboxes"></div></fieldset>
                   <p id="catalogPlacement" class="wide catalog-placement" aria-live="polite"></p>
                   <label class="wide">Internal review notes<textarea name="reviewNotes" rows="2" maxlength="10000" placeholder="Questions, proposed connections, or the reason no category applies"></textarea><small>For staff only. Suggested connections should stay here until confirmed.</small></label>
                   <label>Series<select name="seriesId"><option value="">No series</option></select></label>
@@ -123,7 +124,7 @@
               <p>Manage category names and order. Hiding a category keeps its assignments; deleting a category requires removing its assignments first.</p>
               <div class="catalog-grid"><div><div class="catalog-heading"><h3>Categories</h3><button id="catalogNewTag" type="button" class="outline-button">Add category</button></div><div id="catalogTagRows" class="catalog-list"></div></div>
                 <form id="catalogTagForm" class="field-grid catalog-editor"><h3 class="wide" id="catalogTagHeading">Add a category</h3><input name="id" type="hidden" /><input name="updatedAt" type="hidden" />
-                  <label>Group<select name="taxonomy"><option value="competency">ACGME Competencies</option><option value="survey">ACGME Survey Areas</option></select></label>
+                  <label>Group<select name="taxonomy"><option value="competency">ACGME Competencies</option><option value="survey">ACGME Survey Areas</option><option value="topic">Subject Topics</option></select></label>
                   <label>Display order<input name="position" type="number" min="-100000" max="100000" value="0" /></label>
                   <label class="wide">Category name<input name="name" required maxlength="200" /></label>
                   <label class="wide">Description<textarea name="description" maxlength="3000" rows="3"></textarea></label>
@@ -146,136 +147,6 @@
           </div>
         </section>
         <div class="admin-grid">
-          <details id="legacyLibraryControls" class="admin-panel content-panel full legacy-controls">
-            <summary>Advanced: original program records</summary>
-            <p class="legacy-notice">These controls maintain older program records used by the program-sync system. They do not update the new member material list. For everyday additions, edits, and removals, use <strong>Materials, categories &amp; series</strong> above.</p>
-            <div class="posted-items-shell">
-              <div class="posted-list-head">
-                <span class="step-badge">Step 1</span>
-                <div>
-                  <h3>Review posted items</h3>
-                  <p>
-                    This list updates when an item or program is saved. Click
-                    an item already in the list to prefill the inputs below
-                    with its current details for updating.
-                  </p>
-                </div>
-              </div>
-              <div id="contentRows" class="content-rows"></div>
-            </div>
-            <div class="content-tools">
-              <div class="program-editor">
-                <div class="editor-title">
-                  <span class="step-badge">Step 2</span>
-                  <h3>Choose or edit a program area</h3>
-                  <button id="newProgram" class="outline-button" type="button" data-tooltip="Clear the form to create a new program area.">
-                    New program
-                  </button>
-                </div>
-                <p class="field-help">
-                  Program areas are retained for original records and automated program placements. They are separate from ACGME categories.
-                </p>
-                <label class="primary-choice" data-tooltip="Choose an original program area."
-                  >Select program<select id="programEditorSelect"></select
-                ></label>
-                <form id="programForm" class="field-grid">
-                  <label
-                    >Slug<input name="slug" required placeholder="faculty-development"
-                  /><small>URL-safe internal name. Use lowercase letters, numbers, and hyphens.</small></label>
-                  <label
-                    >Name<input name="name" required placeholder="Faculty Development"
-                  /><small>Original program label.</small></label>
-                  <label
-                    >Short label<input name="short" maxlength="4" placeholder="FD"
-                  /><small>Original program abbreviation.</small></label>
-                  <label
-                    >Display order<input name="position" type="number" step="1"
-                  /><small>Lower numbers appear first.</small></label>
-                  <label class="wide"
-                    >Description<textarea name="description" rows="3"></textarea
-                  ><small>Description retained with the original program.</small></label>
-                  <label class="check-row"
-                    ><input name="enabled" type="checkbox" checked /> Enable original program area</label
-                  >
-                  <div class="form-actions wide">
-                    <button class="primary-button" type="submit" data-tooltip="Save changes to this program area.">Save program</button>
-                    <button id="deleteProgram" class="danger-button" type="button" data-tooltip="Delete this program area after confirmation.">
-                      Delete program
-                    </button>
-                  </div>
-                </form>
-              </div>
-              <div id="resourceEditor" class="resource-editor">
-                <div id="resourceEditorStep" class="editor-title">
-                  <span class="step-badge">Step 3</span>
-                  <h3>Add or edit one item</h3>
-                  <button id="newResource" class="outline-button" type="button" data-tooltip="Clear the form to create a new library item.">
-                    New item
-                  </button>
-                </div>
-                <p class="field-help">
-                  Edit original source records here only when maintaining the older program system. These edits do not change the new material catalog.
-                </p>
-                <form id="resourceForm" class="field-grid">
-                  <input name="id" type="hidden" />
-                  <label class="wide">Program destination<select name="programSlug" required></select><small>Move this item to any program without re-entering its details. Your changes are preserved during banner refreshes.</small></label>
-                  <label class="primary-choice" data-tooltip="Choose the section within the original records."
-                    >Section<select name="section" required>
-                      <option value="upcoming">Upcoming programs</option>
-                      <option value="current">Current & previous academic year</option>
-                      <option value="archives">Archive</option>
-                    </select><small>Controls which list this item appears in.</small></label
-                  >
-                  <label data-tooltip="Controls the visible label and how this item is displayed."
-                    >Type<select name="type">
-                      <option value="recording">Recording</option>
-                      <option value="playlist">YouTube playlist</option>
-                      <option value="course">Course / registration</option>
-                      <option value="resource">Resource / link</option>
-                    </select><small>Controls the label and display style.</small></label
-                  >
-                  <label class="wide" data-tooltip="Title in the original program records."
-                    >Title<input name="title" required
-                  /><small>Title in the original program records.</small></label>
-                  <label class="wide" data-tooltip="Destination link for the video, playlist, PDF, registration, or resource."
-                    >URL<input name="url" type="url" required placeholder="https://..."
-                  /><small>Use a YouTube link for recordings/playlists or a full registration/resource URL.</small></label>
-                  <label
-                    >Group<input name="groupName" placeholder="Hot Topics"
-                  /><small>Optional series name.</small></label>
-                  <label
-                    >Presenter<input name="presenter"
-                  /><small>Optional speaker line.</small></label>
-                  <label
-                    >Date<input name="itemDate" placeholder="October 3, 2025"
-                  /><small>Optional display date.</small></label>
-                  <label
-                    >Meta<input name="meta" placeholder="Registration"
-                  /><small>Optional note, such as Registration or Handout.</small></label>
-                  <label
-                    >Display order<input name="position" type="number" step="1"
-                  /><small>Lower numbers appear first in this section.</small></label>
-                  <label class="check-row"
-                    ><input name="embedEnabled" type="checkbox" checked /> Embed YouTube player when possible</label
-                  >
-                  <p class="wide field-help compact-help">
-                    Leave embedding on for public YouTube videos/playlists. Turn
-                    it off when YouTube shows “private,” “age restricted,” or
-                    “playback disabled”; members will get a clean link instead.
-                    YouTube playlists update automatically when videos are added
-                    on YouTube.
-                  </p>
-                  <div class="form-actions wide">
-                    <button class="primary-button" type="submit" data-tooltip="Save changes to this library item.">Save item</button>
-                    <button id="deleteResource" class="danger-button" type="button" data-tooltip="Delete this library item after confirmation.">
-                      Delete item
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-            <p id="contentStatus" class="form-status"></p>
-          </details>
           <section class="admin-panel sync-panel full">
             <div class="panel-title">
               <div>

@@ -4,8 +4,6 @@ import vm from 'node:vm';
 
 const source = await readFile(new URL('../public/admin.js', import.meta.url), 'utf8');
 for (const [selector, next, payload] of [
-  ['#programForm', '#deleteProgram', { slug: 'research', name: 'Updated title' }],
-  ['#resourceForm', '#deleteResource', { id: 'recording', title: 'Updated recording', programSlug: 'research' }],
   ['#institutionSegmentForm', '#institutionSegmentList', null],
 ]) {
   let handler, sent, resets = 0;
@@ -35,4 +33,4 @@ for (const [selector, next, payload] of [
   assert.ok(!status.textContent.includes('null'));
   if (!payload) assert.equal(resets, 1);
 }
-console.log('PASS: program/resource saves and institution reset survive asynchronous event dispatch.');
+console.log('PASS: institution reset survive asynchronous event dispatch.');

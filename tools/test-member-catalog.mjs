@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import http from 'node:http';
 import {createHmac} from 'node:crypto';
 import {memberCatalog} from '../data/library-taxonomy.js';
@@ -27,7 +27,7 @@ const baseUrl=`http://127.0.0.1:${server.address().port}`;
 assert.equal((await realFetch(baseUrl+'/api/catalog')).status,401);
 const value='member:1';const signed=value+'.'+createHmac('sha256','member-test-only').update(value).digest('base64url');
 const res=await realFetch(baseUrl+'/api/catalog',{headers:{cookie:'semcme_member='+encodeURIComponent(signed)}});assert.equal(res.status,200);
-const data=await res.json();assert.ok(data.materials.length>100);assert.equal(data.tags.length,14);
+const data=await res.json();assert.ok(data.materials.length>100);assert.equal(data.tags.filter(t=>t.taxonomy!=='topic').length,14);
 for(const m of data.materials){for(const privateKey of ['reviewNotes','sources','competencyReviewed','surveyReviewed','updatedAt'])assert.ok(!(privateKey in m));for(const tag of m.tags)assert.ok(selectMaterials(data,tag.taxonomy,tag.id).some(x=>x.id===m.id));}
 console.log('PASS: member authentication, private review-data exclusion, all assigned category placements, search, Additional Topics, hidden content, and safe YouTube embedding.');
 }finally{globalThis.fetch=realFetch;await new Promise(resolve=>server.close(resolve));}

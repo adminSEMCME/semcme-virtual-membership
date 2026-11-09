@@ -21,8 +21,6 @@ const api = async (url, options = {}) => {
 };
 
 let dashboard = null;
-let selectedProgramSlug = "";
-let selectedResourceId = "";
 let confirmResolver = null;
 let adminLoadingCount = 0;
 const pageParams = new URLSearchParams(window.location.search);
@@ -140,31 +138,15 @@ function badge(s) {
   return `<span class="status-pill ${isConstantContact ? "cc" : "off"}">${esc(source.replaceAll("_", " "))}</span>`;
 }
 
-function sectionLabel(section) {
-  return {
-    upcoming: "Upcoming programs",
-    current: "Current & previous academic year",
-    archives: "Archive",
-  }[section] || section;
-}
-
-function flattenResources(program) {
-  return ["upcoming", "current", "archives"].flatMap((section) =>
-    (program?.[section] || []).map((resource) => ({ ...resource, section })),
-  );
-}
-
 function renderHeroEvents(events) {
   const placements = dashboard?.heroPlacements || [];
-  const programs = dashboard?.libraryPrograms || [];
   $("#heroEventRows").innerHTML =
     events
       .map(
         (x) => {
           const placement = placements.find(p => p.event_key === x.eventKey);
-          const program = programs.find(p => p.slug === placement?.program_slug);
-          const location = placement?.suppressed ? 'Removed from library' : program ? `${program.name} / ${sectionLabel(placement.section)}${program.enabled ? '' : ' (program hidden)'}` : 'Not placed — destination unavailable';
-          return `<article class="sync-item"><div>${x.backgroundImage ? `<img src="${esc(x.backgroundImage)}" alt="">` : ""}<strong>${esc(x.title)}</strong><small>${esc(x.description)}</small><p>${esc(location)}${placement?.needs_review ? ' — Please review category' : ''}${placement?.manual ? ' — Admin managed' : ''}</p>${program && !placement.suppressed ? `<button type="button" class="outline-button" data-hero-resource="${esc(placement.resource_id)}" data-program="${esc(program.slug)}">Move / edit library item</button>` : ''}</div><a href="${esc(x.ctaUrl)}" target="_blank" rel="noopener">${esc(x.ctaLabel || "Open")}</a></article>`;
+          const location = placement?.suppressed ? 'Removed from materials' : placement?.material_id ? (placement.enabled ? 'In the member library' : 'Hidden from members') : 'Not yet imported';
+          return `<article class="sync-item"><div>${x.backgroundImage ? `<img src="${esc(x.backgroundImage)}" alt="">` : ''}<strong>${esc(x.title)}</strong><small>${esc(x.description)}</small><p>${esc(location)}${placement?.manual ? ' - Admin managed' : ''}</p>${placement?.material_id && !placement.suppressed ? `<button type="button" class="outline-button" data-hero-material="${esc(placement.material_id)}">Edit material</button>` : ''}</div><a href="${esc(x.ctaUrl)}" target="_blank" rel="noopener">${esc(x.ctaLabel || 'Open')}</a></article>`;
         },
       )
       .join("") ||
@@ -197,83 +179,6 @@ function renderInstitutionSegments(names = []) {
       .join("") || '<span class="segment-empty">No institution segments configured.</span>';
 }
 
-function fillProgramForm(program) {
-  const form = $("#programForm");
-  form.slug.value = program?.slug || "";
-  form.slug.readOnly = Boolean(program?.slug);
-  form.name.value = program?.name || "";
-  form.short.value = program?.short || "";
-  form.position.value = program?.position ?? "";
-  form.description.value = program?.description || "";
-  form.enabled.checked = program?.enabled !== false;
-}
-
-function fillResourceForm(resource = null) {
-  const form = $("#resourceForm");
-  selectedResourceId = resource?.id || "";
-  form.id.value = resource?.id || "";
-  form.programSlug.innerHTML = (dashboard?.libraryPrograms || []).map(p => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join('');
-  form.programSlug.value = selectedProgramSlug;
-  form.section.value = resource?.section || "current";
-  form.type.value = resource?.type || "recording";
-  form.title.value = resource?.title || "";
-  form.url.value = resource?.url || "";
-  form.groupName.value = resource?.group || "";
-  form.presenter.value = resource?.presenter || "";
-  form.itemDate.value = resource?.date || "";
-  form.meta.value = resource?.meta || "";
-  form.position.value = resource?.position ?? "";
-  form.embedEnabled.checked = resource?.embed !== false;
-}
-
-function scrollToResourceEditor() {
-  requestAnimationFrame(() => {
-    $("#resourceEditorStep")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-}
-
-function renderProgramSelect(programs) {
-  $("#programEditorSelect").innerHTML = programs
-    .map((program) => `<option value="${esc(program.slug)}">${esc(program.name)}</option>`)
-    .join("");
-  if (!selectedProgramSlug || !programs.some((p) => p.slug === selectedProgramSlug)) {
-    selectedProgramSlug = programs[0]?.slug || "";
-  }
-  $("#programEditorSelect").value = selectedProgramSlug;
-}
-
-function renderContent(programs) {
-  renderProgramSelect(programs);
-  const program = programs.find((p) => p.slug === selectedProgramSlug) || programs[0] || null;
-  fillProgramForm(program);
-  const resources = flattenResources(program);
-  if (!selectedResourceId || !resources.some((r) => r.id === selectedResourceId)) fillResourceForm(null);
-
-  $("#contentRows").innerHTML = ["upcoming", "current", "archives"]
-    .map((section) => {
-      const items = resources.filter((resource) => resource.section === section);
-      return `<section class="content-group">
-        <div class="content-group-head"><h3>${sectionLabel(section)}</h3><span>${items.length} ${items.length === 1 ? "item" : "items"}</span></div>
-        ${
-          items.length
-            ? `<div class="content-table">${items
-                .map(
-                  (resource) =>
-                    `<button type="button" data-resource-id="${esc(resource.id)}" class="${resource.id === selectedResourceId ? "active" : ""}">
-                      <span class="resource-type">${esc(resource.type || "resource")}</span>
-                      <strong>${esc(resource.title)}</strong>
-                      <small>${esc([resource.group, resource.presenter, resource.date, resource.meta].filter(Boolean).join(" · ") || resource.url)}</small>
-                      ${resource.embed === false ? '<em>Link-only</em>' : ""}
-                    </button>`,
-                )
-                .join("")}</div>`
-            : '<div class="empty-admin">No items in this section.</div>'
-        }
-      </section>`;
-    })
-    .join("");
-}
-
 function renderSupport(support) {
   $("#supportRows").innerHTML =
     (support || [])
@@ -295,12 +200,11 @@ async function load() {
     renderHeroEvents(d.heroEvents || []);
     renderMembers(d.members || []);
     renderInstitutionSegments(d.virtualInstitutionSegments || []);
-    renderContent(d.libraryPrograms || []);
     renderSupport(d.support || []);
     await catalogAdmin.load();
-    const resourceCount = (d.libraryPrograms || []).reduce((sum, program) => sum + flattenResources(program).length, 0);
+    const resourceCount = d.catalogStats?.materials || 0;
     $("#stats").innerHTML =
-      `<div class="stat"><strong>${(d.libraryPrograms || []).length}</strong><span>program areas</span></div><div class="stat"><strong>${resourceCount}</strong><span>library items</span></div><div class="stat"><strong>${(d.members || []).length}</strong><span>members in database</span></div><div class="stat"><strong>${(d.support || []).filter((x) => x.status === "new").length}</strong><span>new questions</span></div>`;
+      `<div class="stat"><strong>${d.catalogStats?.visible || 0}</strong><span>visible materials</span></div><div class="stat"><strong>${resourceCount}</strong><span>library items</span></div><div class="stat"><strong>${(d.members || []).length}</strong><span>members in database</span></div><div class="stat"><strong>${(d.support || []).filter((x) => x.status === "new").length}</strong><span>new questions</span></div>`;
     if (pageParams.get("cc") === "failed") {
       $("#memberSyncStatus").textContent = "Constant Contact reconnect failed. Check that the callback URL is saved in the Constant Contact app.";
       $("#memberSyncStatus").classList.remove("success");
@@ -322,165 +226,9 @@ $("#adminLoginForm").addEventListener("submit", async (e) => {
   }
 });
 
-$("#programEditorSelect").addEventListener("change", async (e) => {
-  selectedProgramSlug = e.currentTarget.value;
-  selectedResourceId = "";
-  renderContent(dashboard?.libraryPrograms || []);
-});
-
-$("#newProgram").addEventListener("click", () => {
-  selectedProgramSlug = "";
-  fillProgramForm(null);
-  fillResourceForm(null);
-  $("#programEditorSelect").value = "";
-  $("#programForm").slug.focus();
-});
-
-$("#programForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const form = e.currentTarget;
-  const payload = formObject(form);
-  const button = e.submitter || form.querySelector("button[type='submit']");
-  const status = $("#contentStatus");
-  const isNew = !form.slug.readOnly;
-  const ok = await confirmAction({
-    title: isNew ? "Save new program area?" : "Save program changes?",
-    message: isNew
-      ? "This will add a new program area to the member site if Show on member site is checked."
-      : "This will update the selected program area on the member site.",
-    actionLabel: "Save program",
-  });
-  if (!ok) return;
-  status.textContent = "Saving program...";
-  try {
-    const result = await withLoading(button, "Saving...", () =>
-      api("/api/admin/library/program", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
-    );
-    selectedProgramSlug = result.slug;
-    selectedResourceId = "";
-    status.textContent = "Program saved.";
-    status.classList.add("success");
-    await load();
-  } catch (x) {
-    status.textContent = x.message;
-    status.classList.remove("success");
-  }
-});
-
-$("#deleteProgram").addEventListener("click", async () => {
-  const button = $("#deleteProgram");
-  const slug = $("#programForm").slug.value;
-  if (!slug) return;
-  const ok = await confirmAction({
-    title: "Delete this program area?",
-    message: "This will remove the program area and all of its library items from the member site.",
-    actionLabel: "Delete program",
-    danger: true,
-  });
-  if (!ok) return;
-  const status = $("#contentStatus");
-  status.textContent = "Deleting program...";
-  try {
-    await withLoading(button, "Deleting...", () =>
-      api(`/api/admin/library/program?slug=${encodeURIComponent(slug)}`, { method: "DELETE" }),
-    );
-    selectedProgramSlug = "";
-    selectedResourceId = "";
-    status.textContent = "Program deleted.";
-    status.classList.add("success");
-    await load();
-  } catch (x) {
-    status.textContent = x.message;
-    status.classList.remove("success");
-  }
-});
-
-$("#newResource").addEventListener("click", () => fillResourceForm(null));
-
-$("#resourceForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const button = e.submitter || e.currentTarget.querySelector("button[type='submit']");
-  const status = $("#contentStatus");
-  const payload = formObject(e.currentTarget);
-  const ok = await confirmAction({
-    title: payload.id ? "Save item changes?" : "Save new library item?",
-    message: payload.id
-      ? "This will update the selected item on the member site."
-      : "This will add this item to the selected section on the member site.",
-    actionLabel: "Save item",
-  });
-  if (!ok) return;
-  status.textContent = "Saving item...";
-  try {
-    const result = await withLoading(button, "Saving...", () =>
-      api("/api/admin/library/resource", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      }),
-    );
-    selectedResourceId = result.id;
-    selectedProgramSlug = payload.programSlug;
-    status.textContent = "Library item saved.";
-    status.classList.add("success");
-    await load();
-  } catch (x) {
-    status.textContent = x.message;
-    status.classList.remove("success");
-  }
-});
-
-$("#deleteResource").addEventListener("click", async () => {
-  const button = $("#deleteResource");
-  const id = $("#resourceForm").id.value;
-  if (!id) return;
-  const ok = await confirmAction({
-    title: "Delete this library item?",
-    message: "This will remove the selected item from the member site.",
-    actionLabel: "Delete item",
-    danger: true,
-  });
-  if (!ok) return;
-  const status = $("#contentStatus");
-  status.textContent = "Deleting item...";
-  try {
-    await withLoading(button, "Deleting...", () =>
-      api(`/api/admin/library/resource?id=${encodeURIComponent(id)}`, { method: "DELETE" }),
-    );
-    selectedResourceId = "";
-    status.textContent = "Library item deleted.";
-    status.classList.add("success");
-    await load();
-  } catch (x) {
-    status.textContent = x.message;
-    status.classList.remove("success");
-  }
-});
-
-$("#contentRows").addEventListener("click", (e) => {
-  const button = e.target.closest("[data-resource-id]");
-  if (!button) return;
-  const id = button.dataset.resourceId;
-  const program = (dashboard?.libraryPrograms || []).find((p) => p.slug === selectedProgramSlug);
-  const resource = flattenResources(program).find((item) => item.id === id);
-  if (!resource) return;
-  fillResourceForm(resource);
-  renderContent(dashboard?.libraryPrograms || []);
-  scrollToResourceEditor();
-});
-
-$("#heroEventRows").addEventListener("click", (e) => {
-  const button = e.target.closest('[data-hero-resource]');
-  if (!button) return;
-  selectedProgramSlug = button.dataset.program;
-  $('#legacyLibraryControls').open = true;
-  selectedResourceId = button.dataset.heroResource;
-  renderContent(dashboard.libraryPrograms);
-  const program = dashboard.libraryPrograms.find(p => p.slug === selectedProgramSlug);
-  fillResourceForm(flattenResources(program).find(r => r.id === selectedResourceId));
-  scrollToResourceEditor();
+$('#heroEventRows').addEventListener('click', async e => {
+  const button=e.target.closest('[data-hero-material]');
+  if(button) await catalogAdmin.openMaterial(button.dataset.heroMaterial);
 });
 
 $("#syncEvents").addEventListener("click", async (e) => {

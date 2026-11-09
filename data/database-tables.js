@@ -2,6 +2,7 @@ const tables = new Set([
   'registrations', 'members', 'support_requests', 'magic_links',
   'library_programs', 'library_resources', 'settings', 'imported_programs',
   'library_series', 'library_materials', 'library_tags', 'library_material_tags', 'library_material_sources',
+  'library_event_imports',
 ]);
 
 // Only SQL identifier tokens are changed; values, comments and parameters are preserved.

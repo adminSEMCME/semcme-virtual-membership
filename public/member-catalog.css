@@ -1,8 +1,8 @@
-﻿.member-catalog { max-width: 1400px; margin: auto; padding: 48px 32px 64px; min-height: 560px; }
+.member-catalog { max-width: 1400px; margin: auto; padding: 48px 32px 64px; min-height: 560px; }
 .member-catalog [hidden] { display:none !important; }
 .catalog-intro h1 { color:var(--navy,#123c60); font-size:clamp(26px,3vw,38px); margin:10px 0; }
 .catalog-intro p { color:#536573; line-height:1.6; }
-.browse-options { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:28px 0 20px; }
+.browse-options { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; margin:28px 0 20px; }
 .browse-options button,.browse-categories button,.browse-search button,.member-catalog [data-retry] { font:inherit; border:1px solid #b5c9d9; border-radius:8px; padding:14px 16px; color:#124a76; background:white; cursor:pointer; }
 .browse-options button { font-weight:700; min-height:64px; }
 .browse-options button[aria-pressed="true"],.browse-categories button[aria-pressed="true"] { background:var(--blue,#00599a); color:white; border-color:var(--blue,#00599a); }

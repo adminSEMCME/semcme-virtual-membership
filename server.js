@@ -10,6 +10,7 @@ import { prefixTables } from './data/database-tables.js';
 import { postgresOptions } from './data/postgres-options.js';
 import { createLibraryCatalog } from './data/library-catalog.js';
 import { memberCatalog } from './data/library-taxonomy.js';
+import { syncCatalogEvents } from './data/catalog-event-sync.js';
 
 const root = fileURLToPath(new URL('.', import.meta.url));
 
@@ -1578,7 +1579,8 @@ async function getVirtualEvents(force=false) {
     const html = await r.text();
     const events = parseSemcmeVirtualSlides(html);
     if (!/\bet_pb_slide\b/.test(html)) throw new Error('SEMCME carousel markup was not found; previous programs retained.');
-    await reconcileEvents(db, events);
+    if (db.type === 'postgres') await syncCatalogEvents(db, events);
+    else await reconcileEvents(db, events);
     await setSettingJson('virtual_hero_events', events);
     await setSettingJson('virtual_hero_synced_at', Date.now());
     await setSettingJson('virtual_hero_sync_error', '');
@@ -1738,7 +1740,8 @@ async function api(req, res, path) {
     try { heroEvents = await getVirtualEvents(); } catch(e) { console.error(e.message); }
     return json(res,200,{
       heroEvents: heroEvents.map(event => ({ ...event, eventKey: eventKey(event) })),
-      heroPlacements: await db.all('SELECT i.*, r.program_slug, r.section FROM imported_programs i LEFT JOIN library_resources r ON r.id=i.resource_id'),
+      heroPlacements: db.type === 'postgres' ? await db.all('SELECT i.*, m.title, m.enabled FROM library_event_imports i LEFT JOIN library_materials m ON m.id=i.material_id') : await db.all('SELECT i.*, r.program_slug, r.section FROM imported_programs i LEFT JOIN library_resources r ON r.id=i.resource_id'),
+      catalogStats: db.type === 'postgres' ? await db.get("SELECT count(*)::int AS materials, count(*) FILTER (WHERE enabled)::int AS visible FROM library_materials") : {materials:0,visible:0},
       heroSyncedAt: await getSettingJson('virtual_hero_synced_at', 0),
       heroSyncError: await getSettingJson('virtual_hero_sync_error', ''),
       constantContactConfigured,
