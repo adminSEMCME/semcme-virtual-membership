@@ -1525,6 +1525,7 @@ async function requestMagicLink(email) {
 }
 
 async function verifyMagicToken(token) {
+  if (typeof token !== 'string' || token.length > 8192 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/.test(token)) return null;
   const [body, sig] = String(token || '').split('.');
   if (!body || !sig) return null;
   const wanted = createHmac('sha256', cookieSecret).update(body).digest('base64url');
@@ -1641,7 +1642,7 @@ async function api(req, res, path) {
     catch (e) { return json(res,e.status || 500,{error:e.message || 'Unable to send that sign-in link.', registrationUrl:e.registrationUrl}); }
   }
   if (path === '/api/auth/verify' && req.method === 'POST') {
-    const b=await readBody(req); const token=clean(b.token,500);
+    const b=await readBody(req); const token=typeof b.token === 'string' ? b.token.trim() : '';
     const row = token ? await verifyMagicToken(token) : null;
     if (!row) return json(res,401,{error:'That sign-in link is invalid or expired.'});
     return json(res,200,{ok:true,email:row.email},{'Set-Cookie':cookie('semcme_member',sign(`member:${row.id}`),1)});

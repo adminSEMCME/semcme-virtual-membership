@@ -11,7 +11,8 @@
     "test:library-schema": "node tools/test-library-schema.mjs",
     "test:library-admin": "node tools/test-library-admin.mjs",
     "test:library-import": "node tools/test-library-import.mjs",
-    "test:member-catalog": "node tools/test-member-catalog.mjs"
+    "test:member-catalog": "node tools/test-member-catalog.mjs",
+    "test:magic-links": "node tools/test-magic-links.mjs"
   },
   "engines": {
     "node": ">=22.5"
