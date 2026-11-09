@@ -40,5 +40,7 @@
 .catalog-workspace button:focus-visible, .catalog-workspace input:focus-visible, .catalog-workspace select:focus-visible, .catalog-workspace textarea:focus-visible { outline: 3px solid #e89a16; outline-offset: 3px; }
 .catalog-workspace .form-actions { flex-wrap: wrap; }
 .catalog-workspace .form-status { min-height: 1.5em; }
+.catalog-list .review-pending { color: #b42318; font-weight: 700; }
+.catalog-list .review-complete { color: #18733c; font-weight: 700; }
 @media (max-width: 950px) { .catalog-grid { grid-template-columns: 1fr; } .catalog-list { max-height: 360px; } }
 @media (max-width: 540px) { .catalog-editor { padding: 14px; grid-template-columns: 1fr; } .catalog-tabs button { flex: 1 1 auto; } .catalog-heading { flex-wrap: wrap; } }
