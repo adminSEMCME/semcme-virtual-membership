@@ -475,6 +475,7 @@ $("#heroEventRows").addEventListener("click", (e) => {
   const button = e.target.closest('[data-hero-resource]');
   if (!button) return;
   selectedProgramSlug = button.dataset.program;
+  $('#legacyLibraryControls').open = true;
   selectedResourceId = button.dataset.heroResource;
   renderContent(dashboard.libraryPrograms);
   const program = dashboard.libraryPrograms.find(p => p.slug === selectedProgramSlug);

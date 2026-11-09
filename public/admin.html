@@ -65,22 +65,16 @@
           </div>
           <p class="catalog-notice">Manage the member library here. Changes appear for members when they reload the page. Assign only confirmed category connections; leave unfinished reviews unchecked.</p>
           <details class="catalog-help">
-            <summary>How to manage materials, categories, and series</summary>
-            <h3>Add or edit a material</h3>
-            <p>On the Materials tab, search for an existing title and select it, or choose Add material. Enter the title, full link, and material type. Add presenter names and a date when known. Keep Play YouTube videos within the site checked for recordings.</p>
-            <h3>Choose where it appears</h3>
-            <p>Check every confirmed competency and survey area. A material can appear in several categories. Removing a check removes that connection after saving. Category assignments from the approved November 2026 mapping document have already been added.</p>
-            <p>Mark each group's review complete only when its mapping decision is finished. Leave unknown or to-be-determined groups unchecked. Materials with unfinished reviews remain in All Materials and any confirmed categories.</p>
-            <p><strong>Additional Topics:</strong> complete both reviews and leave all categories unchecked only when it has been confirmed that neither group applies. A blank mapping alone does not mean Additional Topics.</p>
-            <h3>Group related sessions</h3>
-            <p>Use Series &amp; sessions to create or rename a series. Then edit each material, choose that series, and enter its session order (1, 2, 3, and so on). Save each material separately. Each session keeps its own category connections. Deleting a series keeps its materials.</p>
-            <h3>Manage categories</h3>
-            <p>Use Categories to add, rename, or hide a competency or survey area. Hiding a category keeps its assignments but removes the category from member browsing. A category must have no assigned materials before it can be deleted.</p>
-            <h3>Save, hide, or remove</h3>
-            <p>Click Save and confirm the change. Save the current form before editing another tab. To temporarily hide a material, uncheck Include in the updated member library and save. Delete material permanently removes it and its category connections from this library. The original imported source entry is kept separately.</p>
-            <p>Use Refresh library to load saved changes. The Needs review filter helps find unfinished mappings. Internal review notes and original-location information are visible only to administrators.</p>
-            <h3>Featured programs and older records</h3>
-            <p>The original program records below are retained for featured-program management and reference. They do not automatically add or update entries in the member material list. Use Materials above for new recordings, links, and category changes.</p>
+            <summary>Need help? Open the admin quick guide</summary>
+            <p class="catalog-help-start">Start in <strong>Materials</strong> for everyday updates. Save each form before switching tabs.</p>
+            <div class="catalog-help-grid">
+              <section><h3>1. Add or edit</h3><ul><li>Search and select a title, or click <strong>Add material</strong>.</li><li>Enter the title, link, and type. Add presenter and date when known.</li><li>Click <strong>Save material</strong> and confirm.</li></ul></section>
+              <section><h3>2. Choose categories</h3><ul><li>Check every confirmed competency and survey area.</li><li>Uncheck a category to remove that connection.</li><li>Leave unfinished review boxes unchecked.</li></ul></section>
+              <section><h3>Where materials appear</h3><ul><li><strong>All Materials:</strong> every visible material.</li><li><strong>Category pages:</strong> materials assigned to that category.</li><li><strong>Additional Topics:</strong> both reviews complete, with no categories assigned. Only use this when neither group applies.</li></ul></section>
+              <section><h3>Group sessions</h3><ol><li>Create a group in <strong>Series &amp; sessions</strong>.</li><li>Open each material and choose its series.</li><li>Set <strong>Session order</strong> to 1, 2, 3, etc., then save.</li></ol></section>
+              <section><h3>Hide or remove</h3><ul><li><strong>Hide:</strong> uncheck Include in the updated member library and save.</li><li><strong>Delete:</strong> permanently removes the material and its category connections.</li><li>Use <strong>Categories</strong> to rename or hide categories.</li></ul></section>
+              <section><h3>Track unfinished work</h3><ul><li>Use the <strong>Needs review</strong> filter.</li><li><strong>Internal review notes</strong> are for admins only.</li><li>Members see saved changes after reloading the page.</li></ul></section>
+            </div>
           </details>
           <p id="catalogStatus" class="form-status" role="status" aria-live="polite"></p>
           <div id="catalogControls" hidden>
@@ -152,30 +146,9 @@
           </div>
         </section>
         <div class="admin-grid">
-          <section class="admin-panel content-panel full">
-            <div class="panel-title">
-              <div>
-                <h2>Original program records</h2>
-                <p>
-                  Follow the steps below to control what members see in each
-                  program area.
-                </p>
-              </div>
-            </div>
-            <ol class="workflow-steps" aria-label="Library content workflow">
-              <li>
-                <strong>1. Review posted items</strong>
-                <span>See what is currently live for the selected program area.</span>
-              </li>
-              <li>
-                <strong>2. Choose a program area</strong>
-                <span>Select the left-side category members click, such as Justice in Healthcare or OB/GYN.</span>
-              </li>
-              <li>
-                <strong>3. Add or edit a library item</strong>
-                <span>This is the step most updates will use: edit an existing item, update details, or create a new item.</span>
-              </li>
-            </ol>
+          <details id="legacyLibraryControls" class="admin-panel content-panel full legacy-controls">
+            <summary>Advanced: original program records</summary>
+            <p class="legacy-notice">These controls maintain older program records used by the program-sync system. They do not update the new member material list. For everyday additions, edits, and removals, use <strong>Materials, categories &amp; series</strong> above.</p>
             <div class="posted-items-shell">
               <div class="posted-list-head">
                 <span class="step-badge">Step 1</span>
@@ -200,10 +173,9 @@
                   </button>
                 </div>
                 <p class="field-help">
-                  Program areas are the categories in the member sidebar. Most
-                  updates only require choosing an existing program here.
+                  Program areas are retained for original records and automated program placements. They are separate from ACGME categories.
                 </p>
-                <label class="primary-choice" data-tooltip="Choose the member sidebar category you want to review or edit."
+                <label class="primary-choice" data-tooltip="Choose an original program area."
                   >Select program<select id="programEditorSelect"></select
                 ></label>
                 <form id="programForm" class="field-grid">
@@ -212,18 +184,18 @@
                   /><small>URL-safe internal name. Use lowercase letters, numbers, and hyphens.</small></label>
                   <label
                     >Name<input name="name" required placeholder="Faculty Development"
-                  /><small>Public label shown to members.</small></label>
+                  /><small>Original program label.</small></label>
                   <label
                     >Short label<input name="short" maxlength="4" placeholder="FD"
-                  /><small>Two to four letters shown in the sidebar badge.</small></label>
+                  /><small>Original program abbreviation.</small></label>
                   <label
                     >Display order<input name="position" type="number" step="1"
                   /><small>Lower numbers appear first.</small></label>
                   <label class="wide"
                     >Description<textarea name="description" rows="3"></textarea
-                  ><small>Short intro text at the top of the program page.</small></label>
+                  ><small>Description retained with the original program.</small></label>
                   <label class="check-row"
-                    ><input name="enabled" type="checkbox" checked /> Show on member site</label
+                    ><input name="enabled" type="checkbox" checked /> Enable original program area</label
                   >
                   <div class="form-actions wide">
                     <button class="primary-button" type="submit" data-tooltip="Save changes to this program area.">Save program</button>
@@ -242,14 +214,12 @@
                   </button>
                 </div>
                 <p class="field-help">
-                  Most updates happen here. Use this step to edit existing
-                  videos, playlists, registration links, PDFs, or outside
-                  resources, or to create a new item. Save after each item.
+                  Edit original source records here only when maintaining the older program system. These edits do not change the new material catalog.
                 </p>
                 <form id="resourceForm" class="field-grid">
                   <input name="id" type="hidden" />
                   <label class="wide">Program destination<select name="programSlug" required></select><small>Move this item to any program without re-entering its details. Your changes are preserved during banner refreshes.</small></label>
-                  <label class="primary-choice" data-tooltip="Choose which list this item appears in on the member site."
+                  <label class="primary-choice" data-tooltip="Choose the section within the original records."
                     >Section<select name="section" required>
                       <option value="upcoming">Upcoming programs</option>
                       <option value="current">Current & previous academic year</option>
@@ -264,9 +234,9 @@
                       <option value="resource">Resource / link</option>
                     </select><small>Controls the label and display style.</small></label
                   >
-                  <label class="wide" data-tooltip="Clickable title members will see."
+                  <label class="wide" data-tooltip="Title in the original program records."
                     >Title<input name="title" required
-                  /><small>The clickable title members will see.</small></label>
+                  /><small>Title in the original program records.</small></label>
                   <label class="wide" data-tooltip="Destination link for the video, playlist, PDF, registration, or resource."
                     >URL<input name="url" type="url" required placeholder="https://..."
                   /><small>Use a YouTube link for recordings/playlists or a full registration/resource URL.</small></label>
@@ -305,7 +275,7 @@
               </div>
             </div>
             <p id="contentStatus" class="form-status"></p>
-          </section>
+          </details>
           <section class="admin-panel sync-panel full">
             <div class="panel-title">
               <div>

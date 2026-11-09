@@ -1,8 +1,16 @@
 .catalog-workspace { margin-bottom: 30px; }
-.catalog-help { border: 1px solid #c7d8e4; border-radius: 8px; padding: 16px 20px; margin: 18px 0; line-height: 1.6; }
-.catalog-help summary { cursor: pointer; font-weight: 700; color: #174569; }
-.catalog-help h3 { color: #174569; margin: 22px 0 8px; }
+.catalog-help { border: 1px solid #e4c979; border-radius: 8px; padding: 16px 20px; margin: 18px 0; line-height: 1.6; background: #fff8df; }
+.catalog-help summary { cursor: pointer; font-weight: 700; color: #644800; }
+.catalog-help h3 { color: #174569; margin: 0 0 8px; font-size: 17px; }
 .catalog-help p { margin: 8px 0; }
+.catalog-help-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin-top: 16px; }
+.catalog-help-grid section { background: #fff; border: 1px solid #eadfbc; border-radius: 8px; padding: 18px; }
+.catalog-help-grid ul,.catalog-help-grid ol { padding-left: 20px; margin: 0; }
+.catalog-help-grid li + li { margin-top: 6px; }
+.legacy-controls > summary { cursor: pointer; color: #536573; font-weight: 700; }
+.legacy-notice { background: #f1f5f8; padding: 16px; border-left: 4px solid #b5c9d9; }
+.catalog-help summary:focus-visible,.legacy-controls > summary:focus-visible { outline: 3px solid #00519d; outline-offset: 4px; }
+@media(max-width:700px) { .catalog-help-grid { grid-template-columns: 1fr; } }
 .catalog-workspace [hidden] { display: none !important; }
 .catalog-workspace .panel-title { gap: 20px; align-items: center; }
 .catalog-notice { padding: 14px 18px; border-left: 4px solid var(--blue); background: #edf5fb; line-height: 1.5; }
