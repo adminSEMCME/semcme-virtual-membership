@@ -41,7 +41,7 @@
               autocomplete="current-password"
               required /></label
           ><button class="primary-button">Sign in <span>→</span></button>
-          <p class="form-status"></p>
+          <p class="form-status" role="status" aria-live="polite"></p>
         </form>
       </section>
       <section id="dashboard" class="hidden">
@@ -66,14 +66,14 @@
           <p class="catalog-notice">Manage the member library here. Changes appear for members when they reload the page. Assign only confirmed category connections; leave unfinished reviews unchecked.</p>
           <details class="catalog-help">
             <summary>Need help? Open the admin quick guide</summary>
-            <p class="catalog-help-start">Start in <strong>Materials</strong> for everyday updates. Save each form before switching tabs.</p>
+            <p class="catalog-help-start">Caroline, start in <strong>Materials</strong> for everyday updates. Save each form and wait for the green confirmation before moving on.</p>
             <div class="catalog-help-grid">
-              <section><h3>1. Add or edit</h3><ul><li>Filter by competency, survey area, subject topic, or Additional Topics. Then search and select a title, or click <strong>Add material</strong>.</li><li>Enter the title, link, and type. Add presenter and date when known.</li><li>Click <strong>Save material</strong> and confirm.</li></ul></section>
-              <section><h3>2. Choose categories</h3><ul><li>Check every confirmed competency and survey area. Also select the relevant subject topics.</li><li>Uncheck a category to remove that connection.</li><li>Leave unfinished review boxes unchecked.</li></ul></section>
-              <section><h3>Where materials appear</h3><ul><li><strong>All Materials:</strong> every visible material.</li><li><strong>Category pages:</strong> materials assigned to that category.</li><li><strong>Additional Topics:</strong> both ACGME reviews complete, with no ACGME categories assigned. Subject topics can still be selected. Only use this when neither group applies.</li></ul></section>
-              <section><h3>Group sessions</h3><ol><li>Create a group in <strong>Series &amp; sessions</strong>.</li><li>Open each material and choose its series.</li><li>Set <strong>Session order</strong> to 1, 2, 3, etc., then save.</li></ol></section>
-              <section><h3>Hide or remove</h3><ul><li><strong>Hide:</strong> uncheck Include in the updated member library and save.</li><li><strong>Delete:</strong> permanently removes the material and its category connections.</li><li>Use <strong>Categories</strong> to add, rename, or hide competencies, survey areas, and subject topics.</li></ul></section>
-              <section><h3>Track unfinished work</h3><ul><li>Use the <strong>Needs review</strong> filter.</li><li><strong>Internal review notes</strong> are for admins only.</li><li>Members see saved changes after reloading the page.</li></ul></section>
+              <section><h3>1. Find or add a material</h3><ol><li>Search for the title and select a result to edit it. If it is missing, use Clear filters and search again before adding a duplicate.</li><li>For a new item, click <strong>Add material</strong>.</li><li>Enter the title, full video or resource link, and type. Add presenter, date, and description when known.</li></ol></section>
+              <section><h3>2. Choose categories</h3><ol><li>Check every confirmed ACGME Competency, Survey Area, and Subject topic that applies. A material can have several categories.</li><li>Check <strong>Competency review is complete</strong> only after reviewing that group. Do the same for <strong>Survey-area review is complete</strong>.</li><li>If unsure, leave the review box unchecked and explain the question in Internal review notes. Members cannot see these notes.</li></ol></section>
+              <section><h3>3. Save and check</h3><ol><li>Keep <strong>Include in the updated member library</strong> checked if members should see the item.</li><li>Click <strong>Save material</strong>, then confirm. A green message confirms it saved; a red message explains a problem to fix.</li><li>Open View member site and reload to check the result. Save before choosing another material or switching tabs.</li></ol></section>
+              <section><h3>Where materials appear</h3><ul><li><strong>All Materials:</strong> every visible material, including items still needing review.</li><li><strong>Category pages:</strong> materials assigned to that category.</li><li><strong>Additional Topics:</strong> both ACGME reviews are complete and no ACGME categories apply. Subject topics may still be selected. Do not mark reviews complete just to move an item here.</li></ul></section>
+              <section><h3>Group related sessions</h3><ol><li>Open <strong>Series &amp; sessions</strong>, click Add series, enter a title, and save.</li><li>Return to Materials. Open the first session, choose its series, set Session order to 1, and save.</li><li>Repeat for the other sessions using 2, 3, and so on. Choose each session's categories individually.</li></ol></section>
+              <section><h3>Hide, remove, or finish a review</h3><ul><li>To hide a material, uncheck <strong>Include in the updated member library</strong> and save. Check it again to restore visibility.</li><li><strong>Delete material</strong> permanently removes the item and its category connections. Hide it if you may need it later.</li><li>Use <strong>Needs review</strong> to find unfinished items.</li><li>Use <strong>Categories</strong> to add, rename, or hide categories. Hiding keeps assignments; deleting requires removing assignments first.</li></ul></section>
             </div>
           </details>
           <p id="catalogStatus" class="form-status" role="status" aria-live="polite"></p>
@@ -170,13 +170,13 @@
               </button>
             </div>
             <div id="heroEventRows" class="sync-list"></div>
-            <p class="form-status"></p>
+            <p class="form-status" role="status" aria-live="polite"></p>
           </section>
           <section class="admin-panel table-panel full members-panel">
             <div class="table-panel-head">
               <div>
                 <h2>Members</h2>
-                <p id="memberSyncStatus" class="form-status"></p>
+                <p id="memberSyncStatus" class="form-status" role="status" aria-live="polite"></p>
               </div>
               <div class="member-actions">
                 <a id="connectConstantContact" class="outline-button" href="/api/admin/constant-contact/connect" data-tooltip="Reconnect Constant Contact if syncing members stops working.">
@@ -197,10 +197,19 @@
                   Sync members checks Constant Contact segments named
                   “Virtual Membership - [Institution] Contacts.”
                 </p>
-                <p>
-                  To add a new Virtual Institution Type JUST the institution
-                  name below.
-                </p>
+                <p>Add the institution name here, then sync to update member institution labels.</p>
+                <details class="institution-guide">
+                  <summary>How to add a new institution</summary>
+                  <ol>
+                    <li>In Constant Contact, make sure the institution's members are on the Virtual Members list used by this website (normally <strong>SEMCME - Virtual Members</strong>).</li>
+                    <li>Create or check a Constant Contact segment named <strong>Virtual Membership - [Institution] Contacts</strong>, replacing [Institution] with the institution name. Confirm that the segment includes the correct contacts.</li>
+                    <li>Below, enter only the institution name. For <strong>Virtual Membership - Example Hospital Contacts</strong>, enter <strong>Example Hospital</strong>.</li>
+                    <li>Click <strong>Add institution</strong>. Wait for the green confirmation and check that the name appears under Currently checked.</li>
+                    <li>Click <strong>Sync members</strong> above. When it finishes, check the Institution column for a member of the new institution.</li>
+                    <li>If the label is missing, check the segment name and contact membership in Constant Contact, then sync again. For a connection error, use Reconnect Constant Contact and retry.</li>
+                  </ol>
+                  <p>This form adds a name to the website's segment checker. It does not create a Constant Contact segment or enroll members. Removing a name stops future checks for that institution; it does not delete members or clear saved institution labels.</p>
+                </details>
               </div>
               <form id="institutionSegmentForm">
                 <label data-tooltip="Type only the institution portion of the matching Constant Contact segment name."
@@ -215,7 +224,7 @@
                 <strong>Currently checked</strong>
                 <div id="institutionSegmentList" class="segment-pill-list"></div>
               </div>
-              <p id="institutionSegmentStatus" class="form-status"></p>
+              <p id="institutionSegmentStatus" class="form-status" role="status" aria-live="polite"></p>
             </div>
             <div class="table-wrap members-table-wrap">
               <table>
@@ -234,6 +243,7 @@
           </section>
           <section class="admin-panel table-panel full">
             <h2>Support requests</h2>
+            <p id="supportStatus" class="form-status support-status" role="status" aria-live="polite"></p>
             <div class="table-wrap">
               <table>
                 <thead>
@@ -242,6 +252,7 @@
                     <th>Topic</th>
                     <th>Message</th>
                     <th>Date</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody id="supportRows"></tbody>

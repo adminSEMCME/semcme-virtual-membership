@@ -1755,6 +1755,14 @@ async function api(req, res, path) {
       support:await db.all('SELECT * FROM support_requests ORDER BY created_at DESC LIMIT 250')
     });
   }
+  if (path === '/api/admin/support' && req.method === 'DELETE') {
+    if (!admin(req)) return json(res,401,{error:'Admin login required.'});
+    const id = new URL(req.url, 'http://localhost').searchParams.get('id');
+    if (!/^[1-9]\d*$/.test(id || '') || !Number.isSafeInteger(Number(id))) return json(res,400,{error:'Choose a valid support request.'});
+    const removed = await db.get('DELETE FROM support_requests WHERE id=$1 RETURNING id', [Number(id)]);
+    if (!removed) return json(res,404,{error:'This support request has already been removed.'});
+    return json(res,200,{ok:true});
+  }
   if (path === '/api/admin/institution-segments' && req.method === 'POST') {
     if (!admin(req)) return json(res,401,{error:'Admin login required.'});
     try {

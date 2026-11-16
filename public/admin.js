@@ -82,7 +82,7 @@ function exportMembers() {
   ];
   downloadCsv("virtual-membership-members.csv", rows);
   $("#memberSyncStatus").textContent = `Exported ${members.length} member${members.length === 1 ? "" : "s"}.`;
-  $("#memberSyncStatus").classList.add("success");
+  $("#memberSyncStatus").className = "form-status success";
 }
 
 async function withLoading(button, label, task) {
@@ -152,6 +152,7 @@ function renderHeroEvents(events) {
       .join("") ||
     '<div class="empty-admin">No virtual programs were found on SEMCME.org.</div>';
   const status = document.querySelector('#syncEvents').closest('.admin-panel').querySelector('.form-status');
+  status.className = dashboard.heroSyncError ? "form-status" : "form-status info";
   status.textContent = dashboard.heroSyncError || (dashboard.heroSyncedAt ? `Last successful sync: ${new Date(dashboard.heroSyncedAt).toLocaleString()}. Scheduled daily; Refresh programs runs immediately.` : 'Awaiting first sync.');
 }
 
@@ -184,10 +185,41 @@ function renderSupport(support) {
     (support || [])
       .map(
         (x) =>
-          `<tr><td><strong>${esc(x.name)}</strong><small>${esc(x.email)}</small></td><td>${esc(x.topic)}</td><td>${esc(x.message)}</td><td>${esc(formatDate(x.created_at))}</td></tr>`,
+          `<tr><td><strong>${esc(x.name)}</strong><small>${esc(x.email)}</small></td><td>${esc(x.topic)}</td><td class="support-message">${esc(x.message)}</td><td>${esc(formatDate(x.created_at))}</td><td><button type="button" class="danger-button" data-support-id="${esc(x.id)}" aria-label="Delete support request from ${esc(x.name)}">Delete request</button></td></tr>`,
       )
-      .join("") || '<tr><td colspan="4">No support requests yet.</td></tr>';
+      .join("") || '<tr><td colspan="5">No support requests yet.</td></tr>';
 }
+
+$("#supportRows").addEventListener("click", async (e) => {
+  const button = e.target.closest("[data-support-id]");
+  if (!button || button.disabled) return;
+  const id = button.dataset.supportId;
+  const request = dashboard?.support.find(item => String(item.id) === id);
+  if (!request) return;
+  const confirmed = await confirmAction({
+    title: "Delete support request?",
+    message: `Permanently delete the request from ${request.name} about "${request.topic}"? This cannot be undone. Any email already sent will remain in your inbox.`,
+    actionLabel: "Delete request", danger: true,
+  });
+  if (!confirmed) { button.focus(); return; }
+  const status = $("#supportStatus");
+  status.className = "form-status support-status loading";
+  status.textContent = "Deleting support request...";
+  try {
+    await withLoading(button, "Deleting...", () => api(`/api/admin/support?id=${encodeURIComponent(id)}`, { method: "DELETE" }));
+    dashboard.support = dashboard.support.filter(item => String(item.id) !== id);
+    renderSupport(dashboard.support);
+    const count = document.querySelector("#stats .stat:last-child strong");
+    if (count) count.textContent = dashboard.support.filter(item => item.status === "new").length;
+    status.className = "form-status support-status success";
+    status.textContent = "Support request deleted.";
+  } catch (error) {
+    status.className = "form-status support-status";
+    status.textContent = error.message;
+  }
+  const next = $("#supportRows button");
+  if (next) next.focus();
+});
 
 const catalogAdmin = initializeCatalogAdmin({ api, esc, confirmAction, withLoading });
 
@@ -207,7 +239,7 @@ async function load() {
       `<div class="stat"><strong>${d.catalogStats?.visible || 0}</strong><span>visible materials</span></div><div class="stat"><strong>${resourceCount}</strong><span>library items</span></div><div class="stat"><strong>${(d.members || []).length}</strong><span>members in database</span></div><div class="stat"><strong>${(d.support || []).filter((x) => x.status === "new").length}</strong><span>new questions</span></div>`;
     if (pageParams.get("cc") === "failed") {
       $("#memberSyncStatus").textContent = "Constant Contact reconnect failed. Check that the callback URL is saved in the Constant Contact app.";
-      $("#memberSyncStatus").classList.remove("success");
+      $("#memberSyncStatus").className = "form-status";
     }
   } catch {}
 }
@@ -234,23 +266,25 @@ $('#heroEventRows').addEventListener('click', async e => {
 $("#syncEvents").addEventListener("click", async (e) => {
   const panel = e.currentTarget.closest(".admin-panel"),
     status = panel.querySelector(".form-status");
+  status.className = "form-status loading";
   status.textContent = "Refreshing SEMCME.org programs...";
   try {
     const d = await withLoading(e.currentTarget, "Refreshing...", () =>
       api("/api/admin/sync-virtual-events", { method: "POST" }),
     );
     status.textContent = `Found ${d.count} virtual programs.`;
-    status.classList.add("success");
+    status.className = "form-status success";
     await load();
   } catch (x) {
     status.textContent = x.message;
-    status.classList.remove("success");
+    status.className = "form-status";
   }
 });
 
 $("#syncMembers").addEventListener("click", async (e) => {
   const button = e.currentTarget;
   const status = $("#memberSyncStatus");
+  status.className = "form-status loading";
   status.textContent = "Syncing members...";
   try {
     const d = await withLoading(button, "Syncing...", () =>
@@ -259,18 +293,18 @@ $("#syncMembers").addEventListener("click", async (e) => {
     status.textContent = d.configured
       ? `Synced ${d.synced} members from Constant Contact. Checked ${d.institutionSegments || 0} institution ${Number(d.institutionSegments || 0) === 1 ? "segment" : "segments"} and updated ${d.institutionSynced || 0} institution ${Number(d.institutionSynced || 0) === 1 ? "value" : "values"}.`
       : "Constant Contact Virtual Members list lookup is not configured yet.";
-    status.classList.add("success");
+    status.className = d.configured ? "form-status success" : "form-status";
     await load();
   } catch (x) {
     status.textContent = x.message;
-    status.classList.remove("success");
+    status.className = "form-status";
   }
 });
 
 $("#exportMembers").addEventListener("click", (e) => {
   withLoading(e.currentTarget, "Exporting...", async () => exportMembers()).catch((x) => {
     $("#memberSyncStatus").textContent = x.message;
-    $("#memberSyncStatus").classList.remove("success");
+    $("#memberSyncStatus").className = "form-status";
   });
 });
 
@@ -280,6 +314,7 @@ $("#institutionSegmentForm").addEventListener("submit", async (e) => {
   const button = e.submitter || form.querySelector("button[type='submit']");
   const status = $("#institutionSegmentStatus");
   const name = form.name.value.trim();
+  status.className = "form-status loading";
   status.textContent = "Saving institution...";
   try {
     const d = await withLoading(button, "Saving...", () =>
@@ -291,11 +326,11 @@ $("#institutionSegmentForm").addEventListener("submit", async (e) => {
     form.reset();
     renderInstitutionSegments(d.virtualInstitutionSegments || []);
     status.textContent = "Institution added to the segment checker.";
-    status.classList.add("success");
+    status.className = "form-status success";
     await load();
   } catch (x) {
     status.textContent = x.message;
-    status.classList.remove("success");
+    status.className = "form-status";
   }
 });
 
@@ -304,6 +339,7 @@ $("#institutionSegmentList").addEventListener("click", async (e) => {
   if (!button) return;
   const name = button.dataset.segmentName;
   const status = $("#institutionSegmentStatus");
+  status.className = "form-status loading";
   status.textContent = "Removing institution...";
   try {
     const d = await withLoading(button, "Removing...", () =>
@@ -311,11 +347,11 @@ $("#institutionSegmentList").addEventListener("click", async (e) => {
     );
     renderInstitutionSegments(d.virtualInstitutionSegments || []);
     status.textContent = "Institution removed from the segment checker.";
-    status.classList.add("success");
+    status.className = "form-status success";
     await load();
   } catch (x) {
     status.textContent = x.message;
-    status.classList.remove("success");
+    status.className = "form-status";
   }
 });
 

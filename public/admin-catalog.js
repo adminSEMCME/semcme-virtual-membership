@@ -24,9 +24,10 @@ export function initializeCatalogAdmin({ api, esc, confirmAction, withLoading })
   const field = (form, name) => form.elements.namedItem(name);
   const selectedId = kind => field(forms[kind], 'id').value;
   const dirty = () => Object.values(forms).some(form => form.dataset.dirty === 'true');
-  function message(value, success = false) {
+  function message(value, success = false, loading = false) {
     status.textContent = value;
     status.classList.toggle('success', success);
+    status.classList.toggle('loading', loading);
   }
   async function discard() {
     if (!dirty()) return true;
@@ -118,7 +119,7 @@ export function initializeCatalogAdmin({ api, esc, confirmAction, withLoading })
     busy = true;
     controls.inert = true;
     $('#catalogRefresh').disabled = true;
-    message(method === 'DELETE' ? 'Deleting...' : 'Saving...');
+    message(method === 'DELETE' ? 'Deleting...' : 'Saving...', false, true);
     let saved = false;
     try {
       const result = await withLoading(button, method === 'DELETE' ? 'Deleting...' : 'Saving...', () => api('/api/admin/catalog/' + kind, { method, body: JSON.stringify(payload) }));
